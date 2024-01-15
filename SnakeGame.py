@@ -138,7 +138,7 @@ def get_name(score):
     return user_text
 
 def write_scores(score):
-    f = open("highscores.txt", "r")
+    f = open("highscores.txt", "w+")
     score_list = f.readlines()
     f.close()
     score_dict = {}
