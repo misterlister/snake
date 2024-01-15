@@ -46,12 +46,23 @@ slow_food = 2
 # key for food that gives bonus points
 bonus_food = 3
 
-font_style = pygame.font.SysFont("bahnschrift", 25)
-score_font = pygame.font.SysFont("comicsansms", 30)
-level_font = pygame.font.SysFont("comicsansms", 35)
-message_font = pygame.font.SysFont("comicsansms", 35)
-title_font = pygame.font.SysFont("bahnschrift", 65)
-high_score_font = pygame.font.SysFont("bahnschrift", 45)
+default_font = pygame.font.get_default_font()
+heading_font = "bahnschrift"
+message_font = "comicsansms"
+if heading_font not in pygame.font.get_fonts():
+    title_font = default_font
+
+if message_font not in pygame.font.get_fonts():
+    message_font = default_font
+
+font_style = pygame.font.SysFont(heading_font, 25)
+title_font = pygame.font.SysFont(heading_font, 65)
+high_score_font = pygame.font.SysFont(heading_font, 45)
+score_font = pygame.font.SysFont(message_font, 30)
+level_font = pygame.font.SysFont(message_font, 35)
+message_font = pygame.font.SysFont(message_font, 35)
+
+
 
 def your_score(score):
     value = score_font.render("Your Score: " + str(score), True, yellow_col)
@@ -346,3 +357,5 @@ def gameLoop():
 
 def main():
     gameLoop()
+
+main()
