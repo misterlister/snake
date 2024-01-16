@@ -13,11 +13,11 @@ import os.path
 pygame.init()
 
 black_col = (0, 0, 0) #colour for snake
-background_col = (125, 125, 255) #colour for the main background screen
+background_col = (205, 225, 255) #colour for the main background screen
 green_col = (0, 155, 0) #colour for normal food
 red_col = (255, 0, 0) #colour for game over text
 white_col = (255, 255, 255) #colour for the background of the game over screen
-yellow_col = (255, 255, 35) #colour for score and food effect text
+yellow_col = (255, 215, 0) #colour for score and food effect text
 
 bonus_col = (0, 255, 0) #colour for bonus points food
 speed_col = (255, 0, 255) #colour for speed food
@@ -67,18 +67,29 @@ level_font = pygame.font.SysFont(message_font, 35)
 message_font = pygame.font.SysFont(message_font, 35)
 
 
+shadow_offset = 2
+
+
 
 def your_score(score):
+    value = score_font.render("Your Score: " + str(score), True, black_col)
+    dis.blit(value, [0 + shadow_offset, 0 + shadow_offset])
     value = score_font.render("Your Score: " + str(score), True, yellow_col)
     dis.blit(value, [0, 0])
 
 def your_level(level):
+    value = level_font.render("Level: " + str(level), True, black_col)
+    dis.blit(value, [dis_width*2/3 + shadow_offset, 0 + shadow_offset])
     value = level_font.render("Level: " + str(level), True, yellow_col)
     dis.blit(value, [dis_width*2/3, 0])
 
 def food_message(message):
+    shadow = message_font.render(message, True, black_col)
     to_print = message_font.render(message, True, yellow_col)
+    shadow_rect = shadow.get_rect(center=dis.get_rect().center)
+    shadow_rect = shadow_rect.move(shadow_offset, shadow_offset)
     msg_rect = to_print.get_rect(center=dis.get_rect().center)
+    dis.blit(shadow, shadow_rect)
     dis.blit(to_print, msg_rect)
 
 def our_snake(snake_list):
@@ -139,6 +150,8 @@ def get_name(score):
                     done = True
                 else:
                     user_text += event.unicode
+    if user_text == "":
+        user_text = "Unnamed"
     return user_text
 
 def write_scores(score):
