@@ -9,6 +9,7 @@ import random
 import math
 import os
 import os.path
+from enum import Enum
 
 pygame.init()
 
@@ -23,8 +24,10 @@ bonus_col = (0, 255, 0) #colour for bonus points food
 speed_col = (255, 0, 255) #colour for speed food
 slow_col = (120, 0, 120) #colour for slow food
 
-dis_width = 800
-dis_height = 600
+dis_width = 1280
+dis_height = 720
+
+clock_speed = 30
 
 dis=pygame.display.set_mode((dis_width, dis_height))
 pygame.display.update()
@@ -32,21 +35,25 @@ pygame.display.set_caption("Snake!")
 
 clock = pygame.time.Clock()
 
-snake_seg = 10
+snake_seg = 20
+start_speed = 7
 num_food = 3
 num_food_types = 10
 message_duration_max = 20
-min_speed = 7
+min_speed = snake_seg/4
 
 # rate at which speed changes when eating speed changing food
 speed_inc = 3
 
-# key for speed increasing food
-speed_food = 1
-# key for speed decreasing food
-slow_food = 2
-# key for food that gives bonus points
-bonus_food = 3
+class Food(Enum):
+    # key for speed increasing food
+    SPEED = 1
+    # key for speed decreasing food
+    SLOW = 2
+    # key for food that gives bonus points
+    BONUS = 3
+    # key for mystery food
+    MYSTERY = 4
 
 save_name = "highscores.txt"
 
@@ -198,7 +205,7 @@ def write_scores(score):
     score_screen()
 
 def place_food(axis):
-    coordinate = round(random.randrange(0, axis - snake_seg) / 10.0) * 10.0
+    coordinate = round(random.randrange(0, axis - snake_seg) / snake_seg) * snake_seg
     return coordinate
 
 def set_food_type():
@@ -206,11 +213,11 @@ def set_food_type():
     return food_type
 
 def draw_food(x_coord, y_coord, f_type):
-    if f_type == speed_food:
+    if f_type == Food.SPEED:
         pygame.draw.rect(dis, speed_col, [x_coord, y_coord, snake_seg, snake_seg])
-    elif f_type == slow_food:
+    elif f_type == Food.SLOW:
         pygame.draw.rect(dis, slow_col, [x_coord, y_coord, snake_seg, snake_seg])
-    elif f_type == bonus_food:
+    elif f_type == Food.BONUS:
         pygame.draw.rect(dis, bonus_col, [x_coord, y_coord, snake_seg, snake_seg])
     else:
         pygame.draw.rect(dis, green_col, [x_coord, y_coord, snake_seg, snake_seg])
@@ -261,7 +268,7 @@ def gameLoop():
 
     snake_list = []
     length_of_snake = 1
-    snake_speed = 15
+    snake_speed = start_speed
 
     game_score = 0
     game_level = 1
@@ -303,17 +310,17 @@ def gameLoop():
                 game_close = True
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
-                    x1_change = -snake_seg
+                    x1_change = -snake_speed
                     y1_change = 0
                 elif event.key == pygame.K_RIGHT:
-                    x1_change = snake_seg
+                    x1_change = snake_speed
                     y1_change = 0
                 elif event.key == pygame.K_UP:
                     x1_change = 0
-                    y1_change = -snake_seg
+                    y1_change = -snake_speed
                 elif event.key == pygame.K_DOWN:
                     x1_change = 0
-                    y1_change = snake_seg
+                    y1_change = snake_speed
 
         if x1 >= dis_width or x1 < 0 or y1 >= dis_height or y1 < 0:
             game_over = True
@@ -344,19 +351,19 @@ def gameLoop():
         pygame.display.update()
 
         for i in range(num_food):
-            if x1 == foodx[i] and y1 == foody[i]:
-                if foodt[i] == speed_food:
+            if (x1 - foodx[i] <= snake_seg/3*2 and x1 - foodx[i] >= -snake_seg/3*2) and (y1 - foody[i] <= snake_seg/3*2 and y1 - foody[i] >= -snake_seg/3*2):
+                if foodt[i] == Food.SPEED:
                     snake_speed += speed_inc
                     curr_message = "Speed Up!!!"
                     message_duration = message_duration_max
-                elif foodt[i] == slow_food:
+                elif foodt[i] == Food.SLOW:
                     if snake_speed - speed_inc <= min_speed:
                         snake_speed = min_speed
                     else:
                         snake_speed -= speed_inc
                     curr_message = "Slow down..."
                     message_duration = message_duration_max
-                elif foodt[i] == bonus_food:
+                elif foodt[i] == Food.BONUS:
                     game_score += game_level * 2
                     curr_message = "Bonus Points!"
                     message_duration = message_duration_max
@@ -370,7 +377,7 @@ def gameLoop():
                     snake_speed += 1
                     previous_level = game_level
                 break
-        clock.tick(snake_speed)
+        clock.tick(clock_speed)
 
     pygame.quit()
     quit()
