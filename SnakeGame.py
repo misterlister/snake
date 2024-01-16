@@ -7,6 +7,8 @@ import pygame
 import time
 import random
 import math
+import os
+import os.path
 
 pygame.init()
 
@@ -45,6 +47,8 @@ speed_food = 1
 slow_food = 2
 # key for food that gives bonus points
 bonus_food = 3
+
+save_name = "highscores.txt"
 
 default_font = pygame.font.get_default_font()
 heading_font = "bahnschrift"
@@ -93,7 +97,7 @@ def title_banner():
 
 def print_scores():
     banner = high_score_font.render("High Scores:", True, green_col)
-    f = open("highscores.txt", "r")
+    f = open(save_name, "r")
     score_list = f.readlines()
     banner_rect = banner.get_rect(midtop=(dis_width *1/2, dis_height*1/15))
     score_renders = []
@@ -138,7 +142,10 @@ def get_name(score):
     return user_text
 
 def write_scores(score):
-    f = open("highscores.txt", "w+")
+    if not os.path.isfile(save_name):
+        with open(save_name, "w"):
+            pass
+    f = open(save_name, "r")
     score_list = f.readlines()
     f.close()
     score_dict = {}
@@ -171,7 +178,7 @@ def write_scores(score):
             user_name += "1"
     score_dict[user_name] = score
     score_dict = dict(sorted(score_dict.items(), key=lambda x:x[1], reverse=True))
-    f = open("highscores.txt", "w")
+    f = open(save_name, "w")
     for record in score_dict:
         f.write(f"{record}    {score_dict[record]}\n")
     f.close()
