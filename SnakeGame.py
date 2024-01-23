@@ -3,15 +3,18 @@
 # All additional features and implementation were designed and implemented by Hayden Lister
 #
 
-import pygame
+import pygame as pg
 import time
 import random
 import math
 import os
 import os.path
-from enum import Enum
+from enum import IntEnum
 
-pygame.init()
+pg.init()
+
+main_dir = os.path.split(os.path.abspath(__file__))[0]
+sprites_dir = os.path.join(main_dir, "sprites")
 
 black_col = (0, 0, 0) #colour for snake
 background_col = (205, 225, 255) #colour for the main background screen
@@ -29,23 +32,36 @@ dis_height = 720
 
 clock_speed = 30
 
-dis=pygame.display.set_mode((dis_width, dis_height))
-pygame.display.update()
-pygame.display.set_caption("Snake!")
+dis=pg.display.set_mode((dis_width, dis_height))
+pg.display.update()
+pg.display.set_caption("Snake!")
 
-clock = pygame.time.Clock()
+clock = pg.time.Clock()
 
 snake_seg = 20
-start_speed = 7
+start_speed = 8
+# How many food objects will spawn
 num_food = 3
+# How many types of food there are
 num_food_types = 10
-message_duration_max = 20
-min_speed = snake_seg/4
+message_duration_max = 50
+min_speed = 4
 
 # rate at which speed changes when eating speed changing food
-speed_inc = 3
+speed_inc = 2
 
-class Food(Enum):
+def load_image(name, scale = 1):
+    fullname = os.path.join(sprites_dir, name)
+    image = pg.image.load(fullname)
+
+    size = image.get_size()
+    size = (size[0] * scale, size[1] * scale)
+    image = pg.transform.scale(image, size)
+
+    image.convert()
+    return image, image.get_rect()
+
+class Food(IntEnum):
     # key for speed increasing food
     SPEED = 1
     # key for speed decreasing food
@@ -54,24 +70,26 @@ class Food(Enum):
     BONUS = 3
     # key for mystery food
     MYSTERY = 4
+    # key for shield food
+    SHIELD = 5
 
 save_name = "highscores.txt"
 
-default_font = pygame.font.get_default_font()
+default_font = pg.font.get_default_font()
 heading_font = "bahnschrift"
 message_font = "comicsansms"
-if heading_font not in pygame.font.get_fonts():
+if heading_font not in pg.font.get_fonts():
     title_font = default_font
 
-if message_font not in pygame.font.get_fonts():
+if message_font not in pg.font.get_fonts():
     message_font = default_font
 
-font_style = pygame.font.SysFont(heading_font, 25)
-title_font = pygame.font.SysFont(heading_font, 65)
-high_score_font = pygame.font.SysFont(heading_font, 45)
-score_font = pygame.font.SysFont(message_font, 30)
-level_font = pygame.font.SysFont(message_font, 35)
-message_font = pygame.font.SysFont(message_font, 35)
+font_style = pg.font.SysFont(heading_font, 25)
+title_font = pg.font.SysFont(heading_font, 65)
+high_score_font = pg.font.SysFont(heading_font, 45)
+score_font = pg.font.SysFont(message_font, 30)
+level_font = pg.font.SysFont(message_font, 35)
+message_font = pg.font.SysFont(message_font, 35)
 
 
 shadow_offset = 2
@@ -101,7 +119,7 @@ def food_message(message):
 
 def our_snake(snake_list):
     for x in snake_list:
-        pygame.draw.rect(dis, black_col, [x[0], x[1], snake_seg, snake_seg])
+        pg.draw.rect(dis, black_col, [x[0], x[1], snake_seg, snake_seg])
 
 def message(msg, colour):
     msg_text = font_style.render(msg, True, colour)
@@ -134,26 +152,26 @@ def get_name(score):
     title_text = high_score_font.render("You got a High Score! Enter your name:", True, green_col)
     title_rect = title_text.get_rect(midtop=(dis_width *1/2, dis_height*1/6))
     user_text = ""
-    input_rect = pygame.Rect(dis_width/3, dis_height/2, dis_width/4, dis_height/15)
+    input_rect = pg.Rect(dis_width/3, dis_height/2, dis_width/4, dis_height/15)
     done = False
     while not done:
         dis.fill(black_col)
-        pygame.draw.rect(dis, yellow_col, input_rect)
+        pg.draw.rect(dis, yellow_col, input_rect)
         text_surface = font_style.render(user_text, True, black_col)
         dis.blit(text_surface, (input_rect.x+5, input_rect.y+5))
         input_rect.w = max(100, text_surface.get_width()+10)
         dis.blit(title_text, title_rect)
         your_score(score)
-        pygame.display.update()
+        pg.display.update()
         clock.tick(60)
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
                 quit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_BACKSPACE:
+            if event.type == pg.KEYDOWN:
+                if event.key == pg.K_BACKSPACE:
                     user_text = user_text[:-1]
-                elif event.key == pygame.K_RETURN or event.key == pygame.K_KP_ENTER:
+                elif event.key == pg.K_RETURN or event.key == pg.K_KP_ENTER:
                     done = True
                 else:
                     user_text += event.unicode
@@ -204,7 +222,7 @@ def write_scores(score):
     f.close()
     score_screen()
 
-def place_food(axis):
+def place_object(axis):
     coordinate = round(random.randrange(0, axis - snake_seg) / snake_seg) * snake_seg
     return coordinate
 
@@ -212,15 +230,33 @@ def set_food_type():
     food_type = round(random.randrange(0, num_food_types))
     return food_type
 
-def draw_food(x_coord, y_coord, f_type):
-    if f_type == Food.SPEED:
-        pygame.draw.rect(dis, speed_col, [x_coord, y_coord, snake_seg, snake_seg])
-    elif f_type == Food.SLOW:
-        pygame.draw.rect(dis, slow_col, [x_coord, y_coord, snake_seg, snake_seg])
-    elif f_type == Food.BONUS:
-        pygame.draw.rect(dis, bonus_col, [x_coord, y_coord, snake_seg, snake_seg])
+def draw_object(x_coord, y_coord, o_type):
+    if o_type == Food.SPEED:
+        pg.draw.rect(dis, speed_col, [x_coord, y_coord, snake_seg, snake_seg])
+    elif o_type == Food.SLOW:
+        pg.draw.rect(dis, slow_col, [x_coord, y_coord, snake_seg, snake_seg])
+    elif o_type == Food.BONUS:
+        pg.draw.rect(dis, bonus_col, [x_coord, y_coord, snake_seg, snake_seg])
     else:
-        pygame.draw.rect(dis, green_col, [x_coord, y_coord, snake_seg, snake_seg])
+        pg.draw.rect(dis, green_col, [x_coord, y_coord, snake_seg, snake_seg])
+
+class Spikeball(pg.sprite.Sprite):
+
+    def __init__(self):
+        #pg.sprite.Sprite.__init__(self)
+        self.image, self.rect = load_image("spikeball.png")
+        self.x = place_object(dis_width)
+        self.y = place_object(dis_height)
+        self.rect.center = self.x, self.y
+
+    def display(self):
+        dis.blit(self.image, (self.x, self.y))
+
+def collide(x1, y1, x2, y2):
+    if (x1 - x2 <= snake_seg/4*3 and x1 - x2 >= -snake_seg/4*3) and (y1 - y2 <= snake_seg/4*3 and y1 - y2 >= -snake_seg/4*3):
+        return True
+    return False
+
 
 def start_screen():
     play = False
@@ -228,18 +264,18 @@ def start_screen():
         dis.fill(black_col)
         title_banner()
         message("Press P-Play, S-See High Scores, Q-Quit Game", white_col)
-        pygame.display.update()
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
+        pg.display.update()
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
                 quit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_s:
+            if event.type == pg.KEYDOWN:
+                if event.key == pg.K_s:
                     score_screen()
-                if event.key == pygame.K_p:
+                if event.key == pg.K_p:
                     play = True
-                if event.key == pygame.K_q:
-                    pygame.quit()
+                if event.key == pg.K_q:
+                    pg.quit()
                     quit()
 
 
@@ -248,12 +284,12 @@ def score_screen():
     while not done:
         dis.fill(black_col)
         print_scores()
-        pygame.display.update()
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
+        pg.display.update()
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                pg.quit()
                 quit()
-            if event.type == pygame.KEYDOWN:
+            if event.type == pg.KEYDOWN:
                 done = True
 
 def gameLoop():
@@ -276,13 +312,18 @@ def gameLoop():
     curr_message = ""
     message_duration = 0
 
+    # handles creation of spikeballs. 
+    spikeball_ready = False
+
+    spikeballs = []
+
     foodx = [0] * num_food
     for x in range(num_food):
-        foodx[x] = place_food(dis_width)
+        foodx[x] = place_object(dis_width)
 
     foody = [0] * num_food
     for y in range(num_food):
-        foody[y] = place_food(dis_height)
+        foody[y] = place_object(dis_height)
 
     foodt = [0] * num_food
     for t in range(num_food):
@@ -295,41 +336,49 @@ def gameLoop():
             dis.fill(black_col)
             message("Game Over! Press any key to continue", red_col)
             your_score(game_score)
-            pygame.display.update()
+            pg.display.update()
             
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
                     game_over = False
                     game_close = True
-                if event.type == pygame.KEYDOWN:
+                if event.type == pg.KEYDOWN:
                     write_scores(game_score)
                     gameLoop()
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
                 game_close = True
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
+            if event.type == pg.KEYDOWN:
+                if event.key == pg.K_LEFT:
                     x1_change = -snake_speed
                     y1_change = 0
-                elif event.key == pygame.K_RIGHT:
+                elif event.key == pg.K_RIGHT:
                     x1_change = snake_speed
                     y1_change = 0
-                elif event.key == pygame.K_UP:
+                elif event.key == pg.K_UP:
                     x1_change = 0
                     y1_change = -snake_speed
-                elif event.key == pygame.K_DOWN:
+                elif event.key == pg.K_DOWN:
                     x1_change = 0
                     y1_change = snake_speed
 
         if x1 >= dis_width or x1 < 0 or y1 >= dis_height or y1 < 0:
             game_over = True
 
+        # The next spike ball will be created when length is a multiple of 10
+        if length_of_snake % 10 == 9:
+            spikeball_ready = True
+
+        if length_of_snake % 10 == 0 and spikeball_ready:
+            spikeball_ready = False
+            spikeballs.append(Spikeball())
+        
         x1 += x1_change
         y1 += y1_change
         dis.fill(background_col)
         for j in range(num_food):
-            draw_food(foodx[j], foody[j], foodt[j])
+            draw_object(foodx[j], foody[j], foodt[j])
         snake_head = []
         snake_head.append(x1)
         snake_head.append(y1)
@@ -347,11 +396,15 @@ def gameLoop():
         if message_duration > 0:
             food_message(curr_message)
             message_duration -= 1
-        
-        pygame.display.update()
-
+            
+        for ball in spikeballs:
+            ball.display()
+        pg.display.update()
+        for spikeball in spikeballs:
+            if collide(x1, y1, spikeball.x, spikeball.y):
+                game_over = True
         for i in range(num_food):
-            if (x1 - foodx[i] <= snake_seg/3*2 and x1 - foodx[i] >= -snake_seg/3*2) and (y1 - foody[i] <= snake_seg/3*2 and y1 - foody[i] >= -snake_seg/3*2):
+            if collide(x1, y1, foodx[i], foody[i]):
                 if foodt[i] == Food.SPEED:
                     snake_speed += speed_inc
                     curr_message = "Speed Up!!!"
@@ -367,19 +420,19 @@ def gameLoop():
                     game_score += game_level * 2
                     curr_message = "Bonus Points!"
                     message_duration = message_duration_max
-                foodx[i] = place_food(dis_width)
-                foody[i] = place_food(dis_height)
+                foodx[i] = place_object(dis_width)
+                foody[i] = place_object(dis_height)
                 foodt[i] = set_food_type()
                 length_of_snake += 1
                 game_score += game_level
                 game_level = math.ceil(length_of_snake/10)
                 if game_level > previous_level:
-                    snake_speed += 1
+                    snake_speed += speed_inc
                     previous_level = game_level
                 break
         clock.tick(clock_speed)
 
-    pygame.quit()
+    pg.quit()
     quit()
 
 def main():
