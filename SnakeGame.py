@@ -97,16 +97,16 @@ shadow_offset = 2
 
 
 def your_score(score):
-    value = score_font.render("Your Score: " + str(score), True, black_col)
+    value = score_font.render("Score: " + str(score), True, black_col)
     dis.blit(value, [0 + shadow_offset, 0 + shadow_offset])
-    value = score_font.render("Your Score: " + str(score), True, yellow_col)
+    value = score_font.render("Score: " + str(score), True, yellow_col)
     dis.blit(value, [0, 0])
 
 def your_level(level):
     value = level_font.render("Level: " + str(level), True, black_col)
-    dis.blit(value, [dis_width*2/3 + shadow_offset, 0 + shadow_offset])
+    dis.blit(value, [dis_width*7/8 + shadow_offset, 0 + shadow_offset])
     value = level_font.render("Level: " + str(level), True, yellow_col)
-    dis.blit(value, [dis_width*2/3, 0])
+    dis.blit(value, [dis_width*7/8, 0])
 
 def food_message(message):
     shadow = message_font.render(message, True, black_col)
