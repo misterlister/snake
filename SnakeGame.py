@@ -61,7 +61,7 @@ def load_image(name, scale = 1):
     image.convert()
     return image, image.get_rect()
 
-class Food(IntEnum):
+class FoodNum(IntEnum):
     # key for speed increasing food
     SPEED = 1
     # key for speed decreasing food
@@ -226,37 +226,41 @@ def place_object(axis):
     coordinate = round(random.randrange(0, axis - snake_seg) / snake_seg) * snake_seg
     return coordinate
 
-def set_food_type():
-    food_type = round(random.randrange(0, num_food_types))
-    return food_type
-
-def draw_object(x_coord, y_coord, o_type):
-    if o_type == Food.SPEED:
-        pg.draw.rect(dis, speed_col, [x_coord, y_coord, snake_seg, snake_seg])
-    elif o_type == Food.SLOW:
-        pg.draw.rect(dis, slow_col, [x_coord, y_coord, snake_seg, snake_seg])
-    elif o_type == Food.BONUS:
-        pg.draw.rect(dis, bonus_col, [x_coord, y_coord, snake_seg, snake_seg])
-    else:
-        pg.draw.rect(dis, green_col, [x_coord, y_coord, snake_seg, snake_seg])
-
-class Spikeball(pg.sprite.Sprite):
-
+class Interactable():
     def __init__(self):
-        #pg.sprite.Sprite.__init__(self)
-        self.image, self.rect = load_image("spikeball.png")
+        self.image, self.rect = None, None
         self.x = place_object(dis_width)
         self.y = place_object(dis_height)
-        self.rect.center = self.x, self.y
 
     def display(self):
         dis.blit(self.image, (self.x, self.y))
 
-def collide(x1, y1, x2, y2):
-    if (x1 - x2 <= snake_seg/4*3 and x1 - x2 >= -snake_seg/4*3) and (y1 - y2 <= snake_seg/4*3 and y1 - y2 >= -snake_seg/4*3):
-        return True
-    return False
+    def collide(self, x1, y1):
+        if (x1 - self.x <= snake_seg/4*3 and x1 - self.x >= -snake_seg/4*3) and (y1 - self.y <= snake_seg/4*3 and y1 - self.y >= -snake_seg/4*3):
+            return True
+        return False
 
+class Spikeball(Interactable):
+    def __init__(self):
+        super().__init__()
+        self.image, self.rect = load_image("Spike_Ball.png")
+        self.rect.center = self.x, self.y
+
+class Food(Interactable):
+    def __init__(self):
+        super().__init__()
+        self.type = round(random.randrange(0, num_food_types))
+        food_sprite = None
+        if self.type == FoodNum.SPEED:
+            food_sprite = "Speed_Food.png"
+        elif self.type == FoodNum.SLOW:
+            food_sprite = "Slow_Food.png"
+        elif self.type == FoodNum.BONUS:
+            food_sprite = "Bonus_Food.png"
+        else:
+            food_sprite = "Normal_Food.png"
+        self.image, self.rect = load_image(food_sprite)
+        self.rect.center = self.x, self.y
 
 def start_screen():
     play = False
@@ -312,22 +316,11 @@ def gameLoop():
     curr_message = ""
     message_duration = 0
 
-    # handles creation of spikeballs. 
-    spikeball_ready = False
-
     spikeballs = []
+    foods = []
 
-    foodx = [0] * num_food
-    for x in range(num_food):
-        foodx[x] = place_object(dis_width)
-
-    foody = [0] * num_food
-    for y in range(num_food):
-        foody[y] = place_object(dis_height)
-
-    foodt = [0] * num_food
-    for t in range(num_food):
-        foodt[t] = set_food_type()
+    for i in range(num_food):
+        foods.append(Food())
 
     start_screen()
 
@@ -366,19 +359,11 @@ def gameLoop():
         if x1 >= dis_width or x1 < 0 or y1 >= dis_height or y1 < 0:
             game_over = True
 
-        # The next spike ball will be created when length is a multiple of 10
-        if length_of_snake % 10 == 9:
-            spikeball_ready = True
-
-        if length_of_snake % 10 == 0 and spikeball_ready:
-            spikeball_ready = False
-            spikeballs.append(Spikeball())
-        
         x1 += x1_change
         y1 += y1_change
         dis.fill(background_col)
-        for j in range(num_food):
-            draw_object(foodx[j], foody[j], foodt[j])
+        for food in foods:
+            food.display()
         snake_head = []
         snake_head.append(x1)
         snake_head.append(y1)
@@ -401,34 +386,33 @@ def gameLoop():
             ball.display()
         pg.display.update()
         for spikeball in spikeballs:
-            if collide(x1, y1, spikeball.x, spikeball.y):
+            if spikeball.collide(x1, y1):
                 game_over = True
-        for i in range(num_food):
-            if collide(x1, y1, foodx[i], foody[i]):
-                if foodt[i] == Food.SPEED:
+        for i in range(len(foods)):
+            if foods[i].collide(x1, y1):
+                if foods[i].type == FoodNum.SPEED:
                     snake_speed += speed_inc
                     curr_message = "Speed Up!!!"
                     message_duration = message_duration_max
-                elif foodt[i] == Food.SLOW:
+                elif foods[i].type == FoodNum.SLOW:
                     if snake_speed - speed_inc <= min_speed:
                         snake_speed = min_speed
                     else:
                         snake_speed -= speed_inc
                     curr_message = "Slow down..."
                     message_duration = message_duration_max
-                elif foodt[i] == Food.BONUS:
+                elif foods[i].type == FoodNum.BONUS:
                     game_score += game_level * 2
                     curr_message = "Bonus Points!"
                     message_duration = message_duration_max
-                foodx[i] = place_object(dis_width)
-                foody[i] = place_object(dis_height)
-                foodt[i] = set_food_type()
+                foods[i] = Food()
                 length_of_snake += 1
                 game_score += game_level
                 game_level = math.ceil(length_of_snake/10)
                 if game_level > previous_level:
                     snake_speed += speed_inc
                     previous_level = game_level
+                    spikeballs.append(Spikeball())
                 break
         clock.tick(clock_speed)
 
