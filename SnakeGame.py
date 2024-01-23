@@ -43,7 +43,7 @@ start_speed = 8
 # How many food objects will spawn
 num_food = 3
 # How many types of food there are
-num_food_types = 10
+num_food_types = 12
 message_duration_max = 50
 min_speed = 4
 
@@ -62,6 +62,7 @@ def load_image(name, scale = 1):
     return image, image.get_rect()
 
 class FoodNum(IntEnum):
+    NORMAL = 0
     # key for speed increasing food
     SPEED = 1
     # key for speed decreasing food
@@ -257,7 +258,12 @@ class Food(Interactable):
             food_sprite = "Slow_Food.png"
         elif self.type == FoodNum.BONUS:
             food_sprite = "Bonus_Food.png"
+        elif self.type == FoodNum.MYSTERY:
+            food_sprite = "Mystery_Food.png"
+        elif self.type == FoodNum.SHIELD:
+            food_sprite = "Shield_Food.png"
         else:
+            self.type = FoodNum.NORMAL
             food_sprite = "Normal_Food.png"
         self.image, self.rect = load_image(food_sprite)
         self.rect.center = self.x, self.y
@@ -309,6 +315,7 @@ def gameLoop():
     snake_list = []
     length_of_snake = 1
     snake_speed = start_speed
+    shields = 0
 
     game_score = 0
     game_level = 1
@@ -387,23 +394,32 @@ def gameLoop():
         pg.display.update()
         for spikeball in spikeballs:
             if spikeball.collide(x1, y1):
-                game_over = True
+                if shields > 0:
+                    shields -= 1
+                    spikeballs.remove(spikeball)
+                else:
+                    game_over = True
         for i in range(len(foods)):
             if foods[i].collide(x1, y1):
                 if foods[i].type == FoodNum.SPEED:
                     snake_speed += speed_inc
                     curr_message = "Speed Up!!!"
-                    message_duration = message_duration_max
                 elif foods[i].type == FoodNum.SLOW:
                     if snake_speed - speed_inc <= min_speed:
                         snake_speed = min_speed
                     else:
                         snake_speed -= speed_inc
                     curr_message = "Slow down..."
-                    message_duration = message_duration_max
                 elif foods[i].type == FoodNum.BONUS:
                     game_score += game_level * 2
                     curr_message = "Bonus Points!"
+                elif foods[i].type == FoodNum.MYSTERY:
+                    game_score += game_level * 2
+                    curr_message = "MYSTERY!"
+                elif foods[i].type == FoodNum.SHIELD:
+                    shields += 1
+                    curr_message = "Spike Shield Active!"
+                if foods[i].type != FoodNum.NORMAL:
                     message_duration = message_duration_max
                 foods[i] = Food()
                 length_of_snake += 1
@@ -412,7 +428,9 @@ def gameLoop():
                 if game_level > previous_level:
                     snake_speed += speed_inc
                     previous_level = game_level
-                    spikeballs.append(Spikeball())
+                    for i in range((game_level // 10) +1):
+                        spikeballs.append(Spikeball())
+                    
                 break
         clock.tick(clock_speed)
 
