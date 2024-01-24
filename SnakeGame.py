@@ -91,10 +91,10 @@ class FoodNum(IntEnum):
     TOTALRARITY = NORMALRARITY + SPECIALRARITY
 
 class Direction(IntEnum):
-    UP = 1
-    DOWN = 2
-    LEFT = 3
-    RIGHT = 4
+    UP = 0
+    DOWN = 180
+    LEFT = 90
+    RIGHT = 270
 
 save_name = "highscores.txt"
 
@@ -264,6 +264,9 @@ class Sprite():
         self.x = round(random.randrange(0, dis_width - seg_length) / seg_length) * seg_length
         self.y = round(random.randrange(0, dis_height - seg_length) / seg_length) * seg_length
 
+    def rotate(self,angle):
+        self.image = pg.transform.rotate(self.image, angle)
+
 class Snake(Sprite):
     def __init__(self):
         super().__init__()
@@ -275,7 +278,7 @@ class Snake(Sprite):
         self.body.append(self.Segment(self, self.x, self.y+seg_length, self.direction))#
         self.body[0].destinations.append((self.x, self.y))
         self.tail = self.body[0]
-        self.image, self.rect = load_image("Spike_Ball.png")#HEAD
+        self.image, self.rect = load_image("Snake_Head.png")
         
     def place_object(self):
         self.x = dis_width / 2
@@ -302,9 +305,14 @@ class Snake(Sprite):
             new_y = self.tail.y
         self.body.append(self.Segment(self, new_x, new_y, self.tail.direction))
         self.body[-1].destinations.append((self.tail.x, self.tail.y))
-        self.tail.image, self.tail.rect = load_image("Spike_Ball.png")#SEGMENT
+        self.tail.image, self.tail.rect = load_image("Snake_Body.png")
         self.tail = self.body[-1]
         self.length += 1
+
+    def change_direction(self, new_direction):
+        angle = new_direction-self.direction
+        self.direction = new_direction
+        self.rotate(angle)
 
     def move(self):
         if self.direction == Direction.UP:
@@ -337,7 +345,7 @@ class Snake(Sprite):
             self.head = head
             self.direction = direction
             self.destinations = []
-            self.image, self.rect = load_image("Slow_Food.png")#TAIL
+            self.image, self.rect = load_image("Snake_Tail.png")
 
         def move(self, new_destinations):
             self.destinations.extend(new_destinations)
@@ -347,22 +355,30 @@ class Snake(Sprite):
                 if self.x != self.destinations[0][0]:
                     if self.x > self.destinations[0][0]:
                         self.x -= 1
-                        self.direction = Direction.LEFT
+                        self.change_direction(Direction.LEFT)
                     else:
                         self.x += 1
-                        self.direction = Direction.RIGHT
+                        self.change_direction(Direction.RIGHT)
                     movement -= 1
                 elif self.y != self.destinations[0][1]:
                     if self.y > self.destinations[0][1]:
                         self.y -= 1
-                        self.direction = Direction.UP
+                        self.change_direction(Direction.UP)
                     else:
                         self.y += 1
-                        self.direction = Direction.DOWN
+                        self.change_direction(Direction.DOWN)
                     movement -= 1
                 else:
                     passed_destinations.append(self.destinations.pop(0)) 
             return passed_destinations
+        
+        def rotate(self,angle):
+            self.image = pg.transform.rotate(self.image, angle)
+
+        def change_direction(self, new_direction):
+            angle = new_direction-self.direction
+            self.direction = new_direction
+            self.rotate(angle)
 
 class Spikeball(Sprite):
     def __init__(self):
@@ -479,13 +495,13 @@ def gameLoop():
                 game_close = True
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_LEFT:
-                    snake.direction = Direction.LEFT
+                    snake.change_direction(Direction.LEFT)
                 elif event.key == pg.K_RIGHT:
-                    snake.direction = Direction.RIGHT
+                    snake.change_direction(Direction.RIGHT)
                 elif event.key == pg.K_UP:
-                    snake.direction = Direction.UP
+                    snake.change_direction(Direction.UP)
                 elif event.key == pg.K_DOWN:
-                    snake.direction = Direction.DOWN
+                    snake.change_direction(Direction.DOWN)
 
         dis.fill(background_col)
         for food in foods:
