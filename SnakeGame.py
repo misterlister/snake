@@ -38,8 +38,8 @@ pg.display.set_caption("Snake!")
 
 clock = pg.time.Clock()
 
-snake_seg = 20
-start_speed = 8
+seg_length = 20
+start_speed = 6
 # How many food objects will spawn
 num_food = 3
 # How many types of food there are
@@ -47,8 +47,12 @@ num_food_types = 12
 message_duration_max = 50
 min_speed = 4
 
+tail_radius = 1/2 * seg_length
+collision_radius = 3/4 * seg_length
+safe_radius = 5 * seg_length
+
 # rate at which speed changes when eating speed changing food
-speed_inc = 2
+speed_inc = 1
 
 def load_image(name, scale = 1):
     fullname = os.path.join(sprites_dir, name)
@@ -62,17 +66,35 @@ def load_image(name, scale = 1):
     return image, image.get_rect()
 
 class FoodNum(IntEnum):
-    NORMAL = 0
+    
     # key for speed increasing food
     SPEED = 1
+    SPEEDRARITY = 10
     # key for speed decreasing food
     SLOW = 2
+    SLOWRARITY = 10
     # key for food that gives bonus points
     BONUS = 3
+    BONUSRARITY = 15
     # key for mystery food
     MYSTERY = 4
+    MYSTERYRARITY = 8
     # key for shield food
     SHIELD = 5
+    SHIELDRARITY = 5
+
+    SPECIALRARITY = SPEEDRARITY + SLOWRARITY + BONUSRARITY + MYSTERYRARITY + SHIELDRARITY
+
+    NORMAL = 0
+    NORMALRARITY = SPECIALRARITY
+
+    TOTALRARITY = NORMALRARITY + SPECIALRARITY
+
+class Direction(IntEnum):
+    UP = 1
+    DOWN = 2
+    LEFT = 3
+    RIGHT = 4
 
 save_name = "highscores.txt"
 
@@ -92,10 +114,7 @@ score_font = pg.font.SysFont(message_font, 30)
 level_font = pg.font.SysFont(message_font, 35)
 message_font = pg.font.SysFont(message_font, 35)
 
-
 shadow_offset = 2
-
-
 
 def your_score(score):
     value = score_font.render("Score: " + str(score), True, black_col)
@@ -109,6 +128,12 @@ def your_level(level):
     value = level_font.render("Level: " + str(level), True, yellow_col)
     dis.blit(value, [dis_width*7/8, 0])
 
+def your_shields(shields):
+    value = level_font.render("Shields: " + str(shields), True, black_col)
+    dis.blit(value, [dis_width*2/5 + shadow_offset, 0 + shadow_offset])
+    value = level_font.render("Shields: " + str(shields), True, yellow_col)
+    dis.blit(value, [dis_width*2/5, 0])
+
 def food_message(message):
     shadow = message_font.render(message, True, black_col)
     to_print = message_font.render(message, True, yellow_col)
@@ -117,10 +142,6 @@ def food_message(message):
     msg_rect = to_print.get_rect(center=dis.get_rect().center)
     dis.blit(shadow, shadow_rect)
     dis.blit(to_print, msg_rect)
-
-def our_snake(snake_list):
-    for x in snake_list:
-        pg.draw.rect(dis, black_col, [x[0], x[1], snake_seg, snake_seg])
 
 def message(msg, colour):
     msg_text = font_style.render(msg, True, colour)
@@ -223,50 +244,166 @@ def write_scores(score):
     f.close()
     score_screen()
 
-def place_object(axis):
-    coordinate = round(random.randrange(0, axis - snake_seg) / snake_seg) * snake_seg
-    return coordinate
 
-class Interactable():
+class Sprite():
     def __init__(self):
         self.image, self.rect = None, None
-        self.x = place_object(dis_width)
-        self.y = place_object(dis_height)
-
+        self.x, self.y = None, None
+        self.place_object()
+        
     def display(self):
         dis.blit(self.image, (self.x, self.y))
 
-    def collide(self, x1, y1):
-        if (x1 - self.x <= snake_seg/4*3 and x1 - self.x >= -snake_seg/4*3) and (y1 - self.y <= snake_seg/4*3 and y1 - self.y >= -snake_seg/4*3):
-            return True
+    def collide(self, obj, radius):
+        if (obj.x - self.x <= radius and obj.x - self.x >= -radius):
+            if (obj.y - self.y <= radius and obj.y - self.y >= -radius):
+                return True
         return False
+    
+    def place_object(self):
+        self.x = round(random.randrange(0, dis_width - seg_length) / seg_length) * seg_length
+        self.y = round(random.randrange(0, dis_height - seg_length) / seg_length) * seg_length
 
-class Spikeball(Interactable):
+class Snake(Sprite):
+    def __init__(self):
+        super().__init__()
+        self.body = []
+        self.length = 1
+        self.speed = start_speed
+        self.shields = 0
+        self.direction = Direction.UP
+        self.body.append(self.Segment(self, self.x, self.y+seg_length, self.direction))#
+        self.body[0].destinations.append((self.x, self.y))
+        self.tail = self.body[0]
+        self.image, self.rect = load_image("Spike_Ball.png")#HEAD
+        
+    def place_object(self):
+        self.x = dis_width / 2
+        self.y = dis_height / 2
+    def display(self):
+        #pg.draw.rect(dis, black_col, [self.x, self.y, seg_length, seg_length])
+        dis.blit(self.image, (self.x, self.y))#
+        for segment in self.body:
+            dis.blit(segment.image, (segment.x, segment.y))#
+            #pg.draw.rect(dis, black_col, [segment.x, segment.y, seg_length, seg_length])
+    
+    def grow(self):
+        if self.tail.direction == Direction.UP:
+            new_x = self.tail.x
+            new_y = self.tail.y + seg_length
+        elif self.tail.direction == Direction.DOWN:
+            new_x = self.tail.x
+            new_y = self.tail.y - seg_length
+        elif self.tail.direction == Direction.LEFT:
+            new_x = self.tail.x + seg_length
+            new_y = self.tail.y
+        else:
+            new_x = self.tail.x - seg_length
+            new_y = self.tail.y
+        self.body.append(self.Segment(self, new_x, new_y, self.tail.direction))
+        self.body[-1].destinations.append((self.tail.x, self.tail.y))
+        self.tail.image, self.tail.rect = load_image("Spike_Ball.png")#SEGMENT
+        self.tail = self.body[-1]
+        self.length += 1
+
+    def move(self):
+        if self.direction == Direction.UP:
+            self.y -= self.speed
+        elif self.direction == Direction.DOWN:
+            self.y += self.speed
+        elif self.direction == Direction.LEFT:
+            self.x -= self.speed
+        elif self.direction == Direction.RIGHT:
+            self.x += self.speed
+        if self.x >= dis_width or self.x < 0 or self.y >= dis_height or self.y < 0:
+            return False
+        next_destinations = [(self.x, self.y)]
+        for i in range (self.length):
+            if self.collide(self.body[i], tail_radius):
+                return False
+            next_destinations = self.body[i].move(next_destinations)
+        return True
+
+    def speed_up(self):
+        self.speed += speed_inc
+
+    def slow_down(self):
+        self.speed -= speed_inc
+
+    class Segment():
+        def __init__(self, head, x, y, direction):
+            self.x = x
+            self.y = y
+            self.head = head
+            self.direction = direction
+            self.destinations = []
+            self.image, self.rect = load_image("Slow_Food.png")#TAIL
+
+        def move(self, new_destinations):
+            self.destinations.extend(new_destinations)
+            passed_destinations = []
+            movement = self.head.speed
+            while movement > 0 and len(self.destinations) > 0:
+                if self.x != self.destinations[0][0]:
+                    if self.x > self.destinations[0][0]:
+                        self.x -= 1
+                        self.direction = Direction.LEFT
+                    else:
+                        self.x += 1
+                        self.direction = Direction.RIGHT
+                    movement -= 1
+                elif self.y != self.destinations[0][1]:
+                    if self.y > self.destinations[0][1]:
+                        self.y -= 1
+                        self.direction = Direction.UP
+                    else:
+                        self.y += 1
+                        self.direction = Direction.DOWN
+                    movement -= 1
+                else:
+                    passed_destinations.append(self.destinations.pop(0)) 
+            return passed_destinations
+
+class Spikeball(Sprite):
     def __init__(self):
         super().__init__()
         self.image, self.rect = load_image("Spike_Ball.png")
         self.rect.center = self.x, self.y
 
-class Food(Interactable):
+class Food(Sprite):
     def __init__(self):
         super().__init__()
-        self.type = round(random.randrange(0, num_food_types))
-        food_sprite = None
-        if self.type == FoodNum.SPEED:
-            food_sprite = "Speed_Food.png"
-        elif self.type == FoodNum.SLOW:
-            food_sprite = "Slow_Food.png"
-        elif self.type == FoodNum.BONUS:
-            food_sprite = "Bonus_Food.png"
-        elif self.type == FoodNum.MYSTERY:
-            food_sprite = "Mystery_Food.png"
-        elif self.type == FoodNum.SHIELD:
-            food_sprite = "Shield_Food.png"
-        else:
-            self.type = FoodNum.NORMAL
-            food_sprite = "Normal_Food.png"
-        self.image, self.rect = load_image(food_sprite)
+        self.type = None
+        self.sprite = None
+        self.__get_type_and_sprite()
+        self.image, self.rect = load_image(self.sprite)
         self.rect.center = self.x, self.y
+
+    def __get_type_and_sprite(self):
+        type_code = round(random.randrange(0, FoodNum.TOTALRARITY))
+        if type_code - FoodNum.SPEEDRARITY <= 0:
+            self.sprite = "Speed_Food.png"
+            self.type = FoodNum.SPEED
+            return
+        if type_code - FoodNum.SLOWRARITY <= 0:
+            self.sprite = "Slow_Food.png"
+            self.type = FoodNum.SLOW
+            return
+        if type_code - FoodNum.BONUSRARITY <= 0:
+            self.sprite = "Bonus_Food.png"
+            self.type = FoodNum.BONUS
+            return
+        if type_code - FoodNum.MYSTERYRARITY <= 0:
+            self.sprite = "Mystery_Food.png"
+            self.type = FoodNum.MYSTERY
+            return
+        if type_code - FoodNum.SHIELDRARITY <= 0:
+            self.sprite = "Shield_Food.png"
+            self.type = FoodNum.SHIELD
+            return
+        else:
+            self.sprite = "Normal_Food.png"
+            self.type = FoodNum.NORMAL
 
 def start_screen():
     play = False
@@ -306,16 +443,7 @@ def gameLoop():
     game_over = False
     game_close = False
 
-    x1 = dis_width / 2
-    y1 = dis_height / 2
-
-    x1_change = 0
-    y1_change = 0
-
-    snake_list = []
-    length_of_snake = 1
-    snake_speed = start_speed
-    shields = 0
+    snake = Snake()
 
     game_score = 0
     game_level = 1
@@ -351,40 +479,23 @@ def gameLoop():
                 game_close = True
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_LEFT:
-                    x1_change = -snake_speed
-                    y1_change = 0
+                    snake.direction = Direction.LEFT
                 elif event.key == pg.K_RIGHT:
-                    x1_change = snake_speed
-                    y1_change = 0
+                    snake.direction = Direction.RIGHT
                 elif event.key == pg.K_UP:
-                    x1_change = 0
-                    y1_change = -snake_speed
+                    snake.direction = Direction.UP
                 elif event.key == pg.K_DOWN:
-                    x1_change = 0
-                    y1_change = snake_speed
+                    snake.direction = Direction.DOWN
 
-        if x1 >= dis_width or x1 < 0 or y1 >= dis_height or y1 < 0:
-            game_over = True
-
-        x1 += x1_change
-        y1 += y1_change
         dis.fill(background_col)
         for food in foods:
             food.display()
-        snake_head = []
-        snake_head.append(x1)
-        snake_head.append(y1)
-        snake_list.append(snake_head)
-        if len(snake_list) > length_of_snake:
-            del snake_list[0]
-
-        for x in snake_list[:-1]:
-            if x ==snake_head:
-                game_over = True
-
-        our_snake(snake_list)
+        if snake.move() is False:
+            game_over = True
+        snake.display()
         your_score(game_score)
         your_level(game_level)
+        your_shields(snake.shields)
         if message_duration > 0:
             food_message(curr_message)
             message_duration -= 1
@@ -393,22 +504,22 @@ def gameLoop():
             ball.display()
         pg.display.update()
         for spikeball in spikeballs:
-            if spikeball.collide(x1, y1):
-                if shields > 0:
-                    shields -= 1
+            if spikeball.collide(snake, collision_radius):
+                if snake.shields > 0:
+                    snake.shields -= 1
                     spikeballs.remove(spikeball)
                 else:
                     game_over = True
         for i in range(len(foods)):
-            if foods[i].collide(x1, y1):
+            if foods[i].collide(snake, collision_radius):
                 if foods[i].type == FoodNum.SPEED:
-                    snake_speed += speed_inc
+                    snake.speed_up()
                     curr_message = "Speed Up!!!"
                 elif foods[i].type == FoodNum.SLOW:
                     if snake_speed - speed_inc <= min_speed:
                         snake_speed = min_speed
                     else:
-                        snake_speed -= speed_inc
+                        snake.slow_down()
                     curr_message = "Slow down..."
                 elif foods[i].type == FoodNum.BONUS:
                     game_score += game_level * 2
@@ -417,18 +528,18 @@ def gameLoop():
                     game_score += game_level * 2
                     curr_message = "MYSTERY!"
                 elif foods[i].type == FoodNum.SHIELD:
-                    shields += 1
+                    snake.shields += 1
                     curr_message = "Spike Shield Active!"
                 if foods[i].type != FoodNum.NORMAL:
                     message_duration = message_duration_max
                 foods[i] = Food()
-                length_of_snake += 1
+                snake.grow()
                 game_score += game_level
-                game_level = math.ceil(length_of_snake/10)
+                game_level = math.ceil(snake.length/10)
                 if game_level > previous_level:
-                    snake_speed += speed_inc
+                    snake.speed_up()
                     previous_level = game_level
-                    for i in range((game_level // 10) +1):
+                    for i in range((game_level // 5) +1):
                         spikeballs.append(Spikeball())
                     
                 break
