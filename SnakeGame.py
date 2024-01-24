@@ -306,6 +306,8 @@ class Snake(Sprite):
         self.body.append(self.Segment(self, new_x, new_y, self.tail.direction))
         self.body[-1].destinations.append((self.tail.x, self.tail.y))
         self.tail.image, self.tail.rect = load_image("Snake_Body.png")
+        if self.tail.direction == Direction.LEFT or self.tail.direction == Direction.RIGHT:
+            self.tail.rotate(Direction.LEFT)
         self.tail = self.body[-1]
         self.length += 1
 
@@ -343,9 +345,10 @@ class Snake(Sprite):
             self.x = x
             self.y = y
             self.head = head
-            self.direction = direction
+            self.direction = Direction.UP
             self.destinations = []
             self.image, self.rect = load_image("Snake_Tail.png")
+            self.change_direction(direction)
 
         def move(self, new_destinations):
             self.destinations.extend(new_destinations)
