@@ -244,6 +244,10 @@ def write_scores(score):
     f.close()
     score_screen()
 
+def get_mystery():
+    number = round(random.randrange(0, 10))
+    return number
+
 
 class Sprite():
     def __init__(self):
@@ -279,16 +283,22 @@ class Snake(Sprite):
         self.body[0].destinations.append((self.x, self.y))
         self.tail = self.body[0]
         self.image, self.rect = load_image("Snake_Head.png")
+        self.shield_image, self.shield_rect = load_image("Spike_Shield.png")
         
+    def rotate(self,angle):
+        self.image = pg.transform.rotate(self.image, angle)
+        self.shield_image = pg.transform.rotate(self.shield_image, angle)
+
     def place_object(self):
         self.x = dis_width / 2
         self.y = dis_height / 2
+
     def display(self):
-        #pg.draw.rect(dis, black_col, [self.x, self.y, seg_length, seg_length])
-        dis.blit(self.image, (self.x, self.y))#
+        dis.blit(self.image, (self.x, self.y))
         for segment in self.body:
-            dis.blit(segment.image, (segment.x, segment.y))#
-            #pg.draw.rect(dis, black_col, [segment.x, segment.y, seg_length, seg_length])
+            dis.blit(segment.image, (segment.x, segment.y))
+        if self.shields > 0:
+            dis.blit(self.shield_image, (self.x - (seg_length/4), self.y - (seg_length/4)))
     
     def grow(self):
         if self.tail.direction == Direction.UP:
@@ -305,9 +315,7 @@ class Snake(Sprite):
             new_y = self.tail.y
         self.body.append(self.Segment(self, new_x, new_y, self.tail.direction))
         self.body[-1].destinations.append((self.tail.x, self.tail.y))
-        self.tail.image, self.tail.rect = load_image("Snake_Body.png")
-        if self.tail.direction == Direction.LEFT or self.tail.direction == Direction.RIGHT:
-            self.tail.rotate(Direction.LEFT)
+        self.tail.to_segment()
         self.tail = self.body[-1]
         self.length += 1
 
@@ -338,7 +346,10 @@ class Snake(Sprite):
         self.speed += speed_inc
 
     def slow_down(self):
-        self.speed -= speed_inc
+        if self.speed - speed_inc <= min_speed:
+            self.speed = min_speed
+        else:
+            self.speed -= speed_inc
 
     class Segment():
         def __init__(self, head, x, y, direction):
@@ -351,11 +362,17 @@ class Snake(Sprite):
             self.change_direction(direction)
 
         def move(self, new_destinations):
+            # add new destinations to the destination list
             self.destinations.extend(new_destinations)
+            # create a list to hold newly reached destinations to pass to the next segment
             passed_destinations = []
+            # keep track of the current segment's total movement for this frame
             movement = self.head.speed
+            # while there is more movement to be done, and there are still destinations to reach
             while movement > 0 and len(self.destinations) > 0:
+                # check if this segment isn't on the same x coordinate of the destination
                 if self.x != self.destinations[0][0]:
+                    # if this node is to the left of the destination's x-coordinate, move left
                     if self.x > self.destinations[0][0]:
                         self.x -= 1
                         self.change_direction(Direction.LEFT)
@@ -363,6 +380,7 @@ class Snake(Sprite):
                         self.x += 1
                         self.change_direction(Direction.RIGHT)
                     movement -= 1
+                # check if this segment isn't on the same y-coordinate of the destination
                 elif self.y != self.destinations[0][1]:
                     if self.y > self.destinations[0][1]:
                         self.y -= 1
@@ -372,6 +390,7 @@ class Snake(Sprite):
                         self.change_direction(Direction.DOWN)
                     movement -= 1
                 else:
+                    # if this segment has reached the destination, move it from the destination list to the passed list
                     passed_destinations.append(self.destinations.pop(0)) 
             return passed_destinations
         
@@ -382,6 +401,24 @@ class Snake(Sprite):
             angle = new_direction-self.direction
             self.direction = new_direction
             self.rotate(angle)
+            #self.to_corner()
+
+            """
+        def to_corner(self):
+            self.image, self.rect = load_image("Snake_Corner.png")
+            if self.direction**2 + self.last_direction**2 == Direction.RIGHT**2 + Direction.DOWN**2:
+                self.rotate(Direction.RIGHT)
+            elif self.direction**2 + self.last_direction**2 == Direction.DOWN**2 + Direction.LEFT**2:
+                self.rotate(Direction.DOWN)
+            elif self.direction**2 + self.last_direction**2 == Direction.LEFT**2 + Direction.UP**2:
+                self.rotate(Direction.LEFT)
+            self.corner == True
+            """
+
+        def to_segment(self):
+            self.image, self.rect = load_image("Snake_Body.png")
+            if self.direction == Direction.LEFT or self.direction == Direction.RIGHT:
+                self.rotate(Direction.LEFT)
 
 class Spikeball(Sprite):
     def __init__(self):
@@ -400,23 +437,29 @@ class Food(Sprite):
 
     def __get_type_and_sprite(self):
         type_code = round(random.randrange(0, FoodNum.TOTALRARITY))
-        if type_code - FoodNum.SPEEDRARITY <= 0:
+
+        type_code -= FoodNum.SPEEDRARITY
+        if type_code <= 0:
             self.sprite = "Speed_Food.png"
             self.type = FoodNum.SPEED
             return
-        if type_code - FoodNum.SLOWRARITY <= 0:
+        type_code -= FoodNum.SLOWRARITY
+        if  type_code <= 0:
             self.sprite = "Slow_Food.png"
             self.type = FoodNum.SLOW
             return
-        if type_code - FoodNum.BONUSRARITY <= 0:
+        type_code -= FoodNum.BONUSRARITY
+        if  type_code <= 0:
             self.sprite = "Bonus_Food.png"
             self.type = FoodNum.BONUS
             return
-        if type_code - FoodNum.MYSTERYRARITY <= 0:
+        type_code -= FoodNum.MYSTERYRARITY
+        if  type_code <= 0:
             self.sprite = "Mystery_Food.png"
             self.type = FoodNum.MYSTERY
             return
-        if type_code - FoodNum.SHIELDRARITY <= 0:
+        type_code -= FoodNum.SHIELDRARITY
+        if  type_code <= 0:
             self.sprite = "Shield_Food.png"
             self.type = FoodNum.SHIELD
             return
@@ -467,6 +510,7 @@ def gameLoop():
     game_score = 0
     game_level = 1
     previous_level = 1
+    food_eaten = 0
     curr_message = ""
     message_duration = 0
 
@@ -535,26 +579,48 @@ def gameLoop():
                     snake.speed_up()
                     curr_message = "Speed Up!!!"
                 elif foods[i].type == FoodNum.SLOW:
-                    if snake_speed - speed_inc <= min_speed:
-                        snake_speed = min_speed
-                    else:
-                        snake.slow_down()
+                    snake.slow_down()
                     curr_message = "Slow down..."
                 elif foods[i].type == FoodNum.BONUS:
                     game_score += game_level * 2
                     curr_message = "Bonus Points!"
                 elif foods[i].type == FoodNum.MYSTERY:
                     game_score += game_level * 2
-                    curr_message = "MYSTERY!"
+                    mystery_num = get_mystery()
+                    match mystery_num:
+                        case 0:
+                            curr_message = "One Bonus Point!"
+                            game_score += 1
+                        case 1:
+                            curr_message = "Super Bonus Points!"
+                            game_score += game_level * 3
+                        case 2:
+                            curr_message = "ULTIMATE BONUS POINTS!!!"
+                            game_score += game_level * 4
+                        case 3:
+                            curr_message = "Spikes, yikes!"
+                            for i in range (3):
+                                spikeballs.append(Spikeball())
+                        case 4:
+                            curr_message = "Growww!"
+                            for i in range (3):
+                                snake.grow()
+                        case 5:
+                            curr_message = "Level Up?!?"
+                            food_eaten += 9
+                        case _:
+                            curr_message = "Nothing happened. Too bad."
+                    
                 elif foods[i].type == FoodNum.SHIELD:
                     snake.shields += 1
                     curr_message = "Spike Shield Active!"
                 if foods[i].type != FoodNum.NORMAL:
                     message_duration = message_duration_max
                 foods[i] = Food()
+                food_eaten += 1
                 snake.grow()
                 game_score += game_level
-                game_level = math.ceil(snake.length/10)
+                game_level = math.ceil(food_eaten/10)
                 if game_level > previous_level:
                     snake.speed_up()
                     previous_level = game_level
