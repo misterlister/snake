@@ -22,13 +22,18 @@ green_col = (0, 155, 0) #colour for normal food
 red_col = (255, 0, 0) #colour for game over text
 white_col = (255, 255, 255) #colour for the background of the game over screen
 yellow_col = (255, 215, 0) #colour for score and food effect text
+header_col = (0, 0, 150) #colour for the header background
 
-bonus_col = (0, 255, 0) #colour for bonus points food
-speed_col = (255, 0, 255) #colour for speed food
-slow_col = (120, 0, 120) #colour for slow food
 
 dis_width = 1280
-dis_height = 720
+dis_height = 920
+
+header_height = 55
+line_width = 3
+
+play_height = dis_height-header_height
+
+
 
 clock_speed = 30
 
@@ -39,13 +44,13 @@ pg.display.set_caption("Snake!")
 clock = pg.time.Clock()
 
 seg_length = 25
-start_speed = 7
+start_speed = 6
 # How many food objects will spawn
 num_food = 3
 # How many types of food there are
 num_food_types = 12
 message_duration_max = 50
-min_speed = 5
+min_speed = 4
 
 tail_radius = 1/2 * seg_length
 collision_radius = 3/4 * seg_length
@@ -53,48 +58,6 @@ safe_radius = 5 * seg_length
 
 # rate at which speed changes when eating speed changing food
 speed_inc = 1
-
-def load_image(name, scale = 1.25):
-    fullname = os.path.join(sprites_dir, name)
-    image = pg.image.load(fullname)
-
-    size = image.get_size()
-    size = (size[0] * scale, size[1] * scale)
-    image = pg.transform.scale(image, size)
-
-    image.convert()
-    return image, image.get_rect()
-
-class FoodNum(IntEnum):
-    
-    # key for speed increasing food
-    SPEED = 1
-    SPEEDRARITY = 10
-    # key for speed decreasing food
-    SLOW = 2
-    SLOWRARITY = 10
-    # key for food that gives bonus points
-    BONUS = 3
-    BONUSRARITY = 15
-    # key for mystery food
-    MYSTERY = 4
-    MYSTERYRARITY = 8
-    # key for shield food
-    SHIELD = 5
-    SHIELDRARITY = 5
-
-    SPECIALRARITY = SPEEDRARITY + SLOWRARITY + BONUSRARITY + MYSTERYRARITY + SHIELDRARITY
-
-    NORMAL = 0
-    NORMALRARITY = SPECIALRARITY
-
-    TOTALRARITY = NORMALRARITY + SPECIALRARITY
-
-class Direction(IntEnum):
-    UP = 0
-    DOWN = 180
-    LEFT = 90
-    RIGHT = 270
 
 save_name = "highscores.txt"
 
@@ -115,6 +78,17 @@ level_font = pg.font.SysFont(message_font, 35)
 message_font = pg.font.SysFont(message_font, 35)
 
 shadow_offset = 2
+
+def load_image(name, scale = 1.25):
+    fullname = os.path.join(sprites_dir, name)
+    image = pg.image.load(fullname)
+
+    size = image.get_size()
+    size = (size[0] * scale, size[1] * scale)
+    image = pg.transform.scale(image, size)
+
+    image.convert()
+    return image, image.get_rect()
 
 def your_score(score):
     value = score_font.render("Score: " + str(score), True, black_col)
@@ -147,6 +121,12 @@ def message(msg, colour):
     msg_text = font_style.render(msg, True, colour)
     msg_rect = msg_text.get_rect(center=dis.get_rect().center)
     dis.blit(msg_text, msg_rect)
+
+def header_bar():
+    header_rect = pg.Rect(0, 0, dis_width, header_height)
+    pg.draw.rect(dis, header_col, header_rect)
+    
+    pg.draw.line(dis, black_col, (0, header_height-line_width), (dis_width, header_height-line_width), line_width)
 
 def title_banner():
     msg_text = title_font.render("Snake!", True, green_col)
@@ -248,6 +228,11 @@ def get_mystery():
     number = round(random.randrange(0, 10))
     return number
 
+class Direction(IntEnum):
+    UP = 0
+    DOWN = 180
+    LEFT = 90
+    RIGHT = 270
 
 class Sprite():
     def __init__(self):
@@ -266,7 +251,7 @@ class Sprite():
     
     def place_object(self):
         self.x = round(random.randrange(0, dis_width - seg_length) / seg_length) * seg_length
-        self.y = round(random.randrange(0, dis_height - seg_length) / seg_length) * seg_length
+        self.y = (round(random.randrange(0, play_height - seg_length) / seg_length) * seg_length) + header_height
 
     def rotate(self,angle):
         self.image = pg.transform.rotate(self.image, angle)
@@ -291,7 +276,7 @@ class Snake(Sprite):
 
     def place_object(self):
         self.x = dis_width / 2
-        self.y = dis_height / 2
+        self.y = (play_height / 2) + header_height
 
     def display(self):
         dis.blit(self.image, (self.x, self.y))
@@ -333,7 +318,7 @@ class Snake(Sprite):
             self.x -= self.speed
         elif self.direction == Direction.RIGHT:
             self.x += self.speed
-        if self.x >= dis_width or self.x < 0 or self.y >= dis_height or self.y < 0:
+        if self.x >= dis_width or self.x < 0 or self.y >= dis_height or self.y < header_height:
             return False
         next_destinations = [(self.x, self.y)]
         for i in range (self.length):
@@ -425,6 +410,32 @@ class Spikeball(Sprite):
         super().__init__()
         self.image, self.rect = load_image("Spike_Ball.png")
         self.rect.center = self.x, self.y
+
+class FoodNum(IntEnum):
+    
+    # key for speed increasing food
+    SPEED = 1
+    SPEEDRARITY = 10
+    # key for speed decreasing food
+    SLOW = 2
+    SLOWRARITY = 10
+    # key for food that gives bonus points
+    BONUS = 3
+    BONUSRARITY = 15
+    # key for mystery food
+    MYSTERY = 4
+    MYSTERYRARITY = 8
+    # key for shield food
+    SHIELD = 5
+    SHIELDRARITY = 5
+
+    SPECIALRARITY = SPEEDRARITY + SLOWRARITY + BONUSRARITY + MYSTERYRARITY + SHIELDRARITY
+
+    NORMAL = 0
+    
+    NORMALRARITY = SPECIALRARITY
+
+    TOTALRARITY = NORMALRARITY + SPECIALRARITY
 
 class Food(Sprite):
     def __init__(self):
@@ -551,6 +562,7 @@ def gameLoop():
                     snake.change_direction(Direction.DOWN)
 
         dis.fill(background_col)
+        header_bar()
         for food in foods:
             food.display()
         if snake.move() is False:
@@ -577,10 +589,10 @@ def gameLoop():
             if foods[i].collide(snake, collision_radius):
                 if foods[i].type == FoodNum.SPEED:
                     snake.speed_up()
-                    curr_message = "Speed Up!!!"
+                    curr_message = "Speed Increased!"
                 elif foods[i].type == FoodNum.SLOW:
                     snake.slow_down()
-                    curr_message = "Slow down..."
+                    curr_message = "Speed Decreased"
                 elif foods[i].type == FoodNum.BONUS:
                     game_score += game_level * 2
                     curr_message = "Bonus Points!"
@@ -599,15 +611,24 @@ def gameLoop():
                             game_score += game_level * 4
                         case 3:
                             curr_message = "Spikes, yikes!"
-                            for i in range (3):
+                            for j in range(3):
                                 spikeballs.append(Spikeball())
                         case 4:
                             curr_message = "Growww!"
-                            for i in range (3):
+                            for j in range(3):
                                 snake.grow()
                         case 5:
                             curr_message = "Level Up?!?"
                             food_eaten += 9
+                        case 6:
+                            curr_message = "Spikes And Shields, Madness!"
+                            for j in range(10):
+                                spikeballs.append(Spikeball())
+                            snake.shields += 5
+                        case 7:
+                            curr_message = "Slow... down..."
+                            for j in range(3):
+                                snake.slow_down()
                         case _:
                             curr_message = "Nothing happened. Too bad."
                     
@@ -626,7 +647,6 @@ def gameLoop():
                     previous_level = game_level
                     for i in range((game_level // 5) +1):
                         spikeballs.append(Spikeball())
-                    
                 break
         clock.tick(clock_speed)
 
