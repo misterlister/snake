@@ -38,14 +38,14 @@ pg.display.set_caption("Snake!")
 
 clock = pg.time.Clock()
 
-seg_length = 20
-start_speed = 6
+seg_length = 25
+start_speed = 7
 # How many food objects will spawn
 num_food = 3
 # How many types of food there are
 num_food_types = 12
 message_duration_max = 50
-min_speed = 4
+min_speed = 5
 
 tail_radius = 1/2 * seg_length
 collision_radius = 3/4 * seg_length
@@ -54,7 +54,7 @@ safe_radius = 5 * seg_length
 # rate at which speed changes when eating speed changing food
 speed_inc = 1
 
-def load_image(name, scale = 1):
+def load_image(name, scale = 1.25):
     fullname = os.path.join(sprites_dir, name)
     image = pg.image.load(fullname)
 
