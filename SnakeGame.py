@@ -35,7 +35,7 @@ play_height = dis_height-header_height
 
 
 
-clock_speed = 30
+clock_speed = 60
 
 dis=pg.display.set_mode((dis_width, dis_height))
 pg.display.update()
@@ -45,8 +45,9 @@ clock = pg.time.Clock()
 
 sprite_scale = 1.25
 seg_length = 20 * sprite_scale
-start_speed = 6
-min_speed = 4
+seg_spacing = seg_length - 1
+start_speed = 3
+min_speed = 2
 # How many food objects will spawn
 num_food = 3
 # How many types of food there are
@@ -93,6 +94,8 @@ def load_image(name, scale = sprite_scale):
 
     image.convert()
     return image, image.get_rect()
+
+
 
 def your_score(score):
     value = score_font.render("Score: " + str(score), True, black_col)
@@ -250,8 +253,8 @@ class Sprite():
         return False
     
     def place_object(self):
-        self.x = round(random.randrange(0, dis_width - seg_length) / seg_length) * seg_length
-        self.y = (round(random.randrange(0, play_height - seg_length) / seg_length) * seg_length) + header_height
+        self.x = round(random.randrange(0, int(dis_width - seg_length)) / seg_length) * seg_length
+        self.y = (round(random.randrange(0, int(play_height - seg_length)) / seg_length) * seg_length) + header_height
 
     def rotate(self,angle):
         self.image = pg.transform.rotate(self.image, angle)
@@ -264,18 +267,29 @@ class Snake(Sprite):
         self.speed = start_speed
         self.shields = 0
         self.direction = Direction.UP
-        self.body.append(self.Segment(self, self.x, self.y+seg_length, self.direction))#
+        self.body.append(self.Segment(self, self.x, self.y+seg_spacing, self.direction))#
         self.body[0].destinations.append((self.x, self.y))
         self.tail = self.body[0]
-        self.image, self.rect = load_image("Snake_Head.png")
-        self.shield_image, self.shield_rect = load_image("Spike_Shield.png")
+        self.seg_image_V = self.seg_image_H = self.shield_image = self.shield_rect = None
+        self.corner_UR = self.corner_RD = self.corner_DL = self.corner_LU = None
         self.blindness_time = 0
         self.blindness_levels = []
         self.blindness_rect = None
+        self.load_sprites()
+        
+    def load_sprites(self):
+        self.image, self.rect = load_image("Snake_Head.png")
+        self.seg_image_V, self.rect = load_image("Snake_Segment.png")
+        self.seg_image_H = pg.transform.rotate(self.seg_image_V, Direction.RIGHT)
+        self.shield_image, self.shield_rect = load_image("Spike_Shield.png")
+        self.corner_UR, self.rect = load_image("Snake_Corner.png")
+        self.corner_RD = pg.transform.rotate(self.seg_image_V, Direction.RIGHT)
+        self.corner_DL = pg.transform.rotate(self.seg_image_V, Direction.DOWN)
+        self.corner_LU = pg.transform.rotate(self.seg_image_V, Direction.LEFT)
         for i in range (1, 11):
             current_image, self.blindness_rect = load_image(f"Fog_of_Food-{i}.png")
             self.blindness_levels.append(current_image)
-        
+
     def rotate(self,angle):
         self.image = pg.transform.rotate(self.image, angle)
         self.shield_image = pg.transform.rotate(self.shield_image, angle)
@@ -408,10 +422,13 @@ class Snake(Sprite):
             self.x = x
             self.y = y
             self.head = head
-            self.direction = Direction.UP
+            self.is_tail = True
+            self.direction = direction
+            self.from_direction = None
+            self.last_direction = direction
             self.destinations = []
             self.image, self.rect = load_image("Snake_Tail.png")
-            self.change_direction(direction)
+            self.rotate(direction-Direction.UP)
 
         def move(self, new_destinations):
             # add new destinations to the destination list
@@ -427,50 +444,64 @@ class Snake(Sprite):
                     # if this node is to the left of the destination's x-coordinate, move left
                     if self.x > self.destinations[0][0]:
                         self.x -= speed_inc
-                        self.change_direction(Direction.LEFT)
+                        self.update_direction(Direction.LEFT)
                     else:
                         self.x += speed_inc
-                        self.change_direction(Direction.RIGHT)
+                        self.update_direction(Direction.RIGHT)
                     movement -= speed_inc
                 # check if this segment isn't on the same y-coordinate of the destination
                 elif self.y != self.destinations[0][1]:
                     if self.y > self.destinations[0][1]:
                         self.y -= speed_inc
-                        self.change_direction(Direction.UP)
+                        self.update_direction(Direction.UP)
                     else:
                         self.y += speed_inc
-                        self.change_direction(Direction.DOWN)
+                        self.update_direction(Direction.DOWN)
                     movement -= speed_inc
                 else:
                     # if this segment has reached the destination, move it from the destination list to the passed list
                     passed_destinations.append(self.destinations.pop(0)) 
+            self.update_sprite()
             return passed_destinations
         
         def rotate(self,angle):
             self.image = pg.transform.rotate(self.image, angle)
 
-        def change_direction(self, new_direction):
-            angle = new_direction-self.direction
+        def update_direction(self, new_direction):
+            self.from_direction = self.direction
             self.direction = new_direction
-            self.rotate(angle)
-            #self.to_corner()
+        
+        def update_sprite(self):
+            if self.is_tail:
+                self.turn_tail()
+            elif self.direction == self.from_direction:
+                self.to_segment()
+            else:
+                self.to_corner()
 
-            """
-        def to_corner(self):
-            self.image, self.rect = load_image("Snake_Corner.png")
-            if self.direction**2 + self.last_direction**2 == Direction.RIGHT**2 + Direction.DOWN**2:
-                self.rotate(Direction.RIGHT)
-            elif self.direction**2 + self.last_direction**2 == Direction.DOWN**2 + Direction.LEFT**2:
-                self.rotate(Direction.DOWN)
-            elif self.direction**2 + self.last_direction**2 == Direction.LEFT**2 + Direction.UP**2:
-                self.rotate(Direction.LEFT)
-            self.corner == True
-            """
+        def turn_tail(self):
+            angle = self.direction - self.last_direction
+            self.rotate(angle)
+            self.last_direction = self.direction
 
         def to_segment(self):
-            self.image, self.rect = load_image("Snake_Body.png")
             if self.direction == Direction.LEFT or self.direction == Direction.RIGHT:
-                self.rotate(Direction.LEFT)
+                self.image = self.head.seg_image_H
+            else:
+                self.image = self.head.seg_image_V
+            self.last_direction = self.direction
+            self.is_tail = False
+
+        def to_corner(self):
+            if self.direction**2 + self.from_direction**2 == Direction.RIGHT**2 + Direction.DOWN**2:
+                self.image = self.head.corner_RD
+            elif self.direction**2 + self.from_direction**2 == Direction.DOWN**2 + Direction.LEFT**2:
+                self.image = self.head.corner_DL
+            elif self.direction**2 + self.from_direction**2 == Direction.LEFT**2 + Direction.UP**2:
+                self.image = self.head.corner_LU
+            else:
+                self.image = self.head.corner_UR
+            self.last_direction = self.direction
 
 class Spikeball(Sprite):
     def __init__(self):
@@ -596,7 +627,6 @@ def start_screen():
                 if event.key == pg.K_q:
                     pg.quit()
                     quit()
-
 
 def score_screen():
     done = False
