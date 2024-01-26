@@ -43,21 +43,25 @@ pg.display.set_caption("Snake!")
 
 clock = pg.time.Clock()
 
-seg_length = 25
+sprite_scale = 1.25
+seg_length = 20 * sprite_scale
 start_speed = 6
+min_speed = 4
 # How many food objects will spawn
 num_food = 3
 # How many types of food there are
 num_food_types = 12
 message_duration_max = 50
-min_speed = 4
+blindness_time_max = 300
+blindness_time_phase = blindness_time_max / 10
+
 
 tail_radius = 1/2 * seg_length
 collision_radius = 3/4 * seg_length
 safe_radius = 5 * seg_length
 
 # rate at which speed changes when eating speed changing food
-speed_inc = 1
+speed_inc = 1/2
 
 save_name = "highscores.txt"
 
@@ -79,7 +83,7 @@ message_font = pg.font.SysFont(message_font, 35)
 
 shadow_offset = 2
 
-def load_image(name, scale = 1.25):
+def load_image(name, scale = sprite_scale):
     fullname = os.path.join(sprites_dir, name)
     image = pg.image.load(fullname)
 
@@ -224,10 +228,6 @@ def write_scores(score):
     f.close()
     score_screen()
 
-def get_mystery():
-    number = round(random.randrange(0, 10))
-    return number
-
 class Direction(IntEnum):
     UP = 0
     DOWN = 180
@@ -269,6 +269,12 @@ class Snake(Sprite):
         self.tail = self.body[0]
         self.image, self.rect = load_image("Snake_Head.png")
         self.shield_image, self.shield_rect = load_image("Spike_Shield.png")
+        self.blindness_time = 0
+        self.blindness_levels = []
+        self.blindness_rect = None
+        for i in range (1, 11):
+            current_image, self.blindness_rect = load_image(f"Fog_of_Food-{i}.png")
+            self.blindness_levels.append(current_image)
         
     def rotate(self,angle):
         self.image = pg.transform.rotate(self.image, angle)
@@ -283,7 +289,12 @@ class Snake(Sprite):
         for segment in self.body:
             dis.blit(segment.image, (segment.x, segment.y))
         if self.shields > 0:
-            dis.blit(self.shield_image, (self.x - (seg_length/4), self.y - (seg_length/4)))
+            self.shield_rect.center = pg.Rect(self.x, self.y, seg_length, seg_length).center
+            dis.blit(self.shield_image, (self.shield_rect))
+        if self.blindness_time > 0:
+            blind_image = self.process_blindness()
+            self.blindness_rect.center = pg.Rect(self.x, self.y, seg_length, seg_length).center
+            dis.blit(blind_image, (self.blindness_rect))
     
     def grow(self):
         if self.tail.direction == Direction.UP:
@@ -336,6 +347,62 @@ class Snake(Sprite):
         else:
             self.speed -= speed_inc
 
+    def activate_blindness(self):
+        self.blindness_time = blindness_time_max
+
+    def process_blindness(self):
+        blindness_phase = math.ceil(self.blindness_time / blindness_time_phase)
+        self.blindness_time -= 1
+        return self.blindness_levels[blindness_phase-1]
+    
+    def get_mystery(self):
+        number = round(random.randrange(0, 10))
+        return number
+
+    def mystery_effect(self, player):
+        mystery_num = self.get_mystery()
+        match mystery_num:
+            case 0:
+                player.message("One Bonus Point!")
+                player.add_score(0, 1)
+            case 1:
+                player.message("Super Bonus Points!")
+                player.add_score(3)
+            case 2:
+                player.message("ULTIMATE BONUS POINTS!!!")
+                player.add_score(4)
+            case 3:
+                player.message("Spikes, yikes!")
+                for j in range(3):
+                    player.spikeballs.append(Spikeball())
+            case 4:
+                player.message("Growww!")
+                for j in range(3):
+                    self.grow()
+            case 5:
+                player.message("Level Up?!?")
+                player.level_up()
+            case 6:
+                player.message("Spikes And Shields, Madness!")
+                for j in range(10):
+                    player.spikeballs.append(Spikeball())
+                self.shields += 5
+            case 7:
+                player.message("Slow... down...")
+                for j in range(3):
+                    self.slow_down()
+            case 8:
+                player.message("Destroy Spikeballs!")
+                for j in range(3):
+                    if len(player.spikeballs) > 0:
+                        del player.spikeballs[0]
+            case 9:
+                player.message("Fog of Food!")
+                self.activate_blindness()
+            case _:
+                player.message("Nothing happened. Too bad.")
+                        
+
     class Segment():
         def __init__(self, head, x, y, direction):
             self.x = x
@@ -359,21 +426,21 @@ class Snake(Sprite):
                 if self.x != self.destinations[0][0]:
                     # if this node is to the left of the destination's x-coordinate, move left
                     if self.x > self.destinations[0][0]:
-                        self.x -= 1
+                        self.x -= speed_inc
                         self.change_direction(Direction.LEFT)
                     else:
-                        self.x += 1
+                        self.x += speed_inc
                         self.change_direction(Direction.RIGHT)
-                    movement -= 1
+                    movement -= speed_inc
                 # check if this segment isn't on the same y-coordinate of the destination
                 elif self.y != self.destinations[0][1]:
                     if self.y > self.destinations[0][1]:
-                        self.y -= 1
+                        self.y -= speed_inc
                         self.change_direction(Direction.UP)
                     else:
-                        self.y += 1
+                        self.y += speed_inc
                         self.change_direction(Direction.DOWN)
-                    movement -= 1
+                    movement -= speed_inc
                 else:
                     # if this segment has reached the destination, move it from the destination list to the passed list
                     passed_destinations.append(self.destinations.pop(0)) 
@@ -478,6 +545,38 @@ class Food(Sprite):
             self.sprite = "Normal_Food.png"
             self.type = FoodNum.NORMAL
 
+class Player():
+    def __init__(self, snake):
+        self.score = 0
+        self.level = 1
+        self.food_eaten = 0
+        self.curr_message = ""
+        self.message_duration = 0
+        self.spikeballs = []
+        self.foods = []
+        self.snake = snake
+        for i in range(num_food):
+            self.foods.append(Food())
+
+    def add_score(self, multiplier = 1, adder = 0):
+        self.score += (self.level * multiplier) + adder
+
+    def eat_food(self, quantity = 1):
+        self.food_eaten += quantity
+        while self.food_eaten >= 10:
+            self.food_eaten -= 10
+            self.level_up()
+    
+    def level_up(self):
+        self.level += 1
+        for i in range((self.level // 5) +1):
+            self.spikeballs.append(Spikeball())
+        self.snake.speed_up()
+
+    def message(self, text):
+        self.curr_message = text
+        self.message_duration = message_duration_max
+
 def start_screen():
     play = False
     while not play:
@@ -517,19 +616,7 @@ def gameLoop():
     game_close = False
 
     snake = Snake()
-
-    game_score = 0
-    game_level = 1
-    previous_level = 1
-    food_eaten = 0
-    curr_message = ""
-    message_duration = 0
-
-    spikeballs = []
-    foods = []
-
-    for i in range(num_food):
-        foods.append(Food())
+    player = Player(snake)
 
     start_screen()
 
@@ -537,7 +624,7 @@ def gameLoop():
         while game_over == True:
             dis.fill(black_col)
             message("Game Over! Press any key to continue", red_col)
-            your_score(game_score)
+            your_score(player.score)
             pg.display.update()
             
             for event in pg.event.get():
@@ -545,7 +632,7 @@ def gameLoop():
                     game_over = False
                     game_close = True
                 if event.type == pg.KEYDOWN:
-                    write_scores(game_score)
+                    write_scores(player.score)
                     gameLoop()
 
         for event in pg.event.get():
@@ -563,90 +650,54 @@ def gameLoop():
 
         dis.fill(background_col)
         header_bar()
-        for food in foods:
+        for food in player.foods:
             food.display()
         if snake.move() is False:
             game_over = True
-        snake.display()
-        your_score(game_score)
-        your_level(game_level)
+        your_score(player.score)
+        your_level(player.level)
         your_shields(snake.shields)
-        if message_duration > 0:
-            food_message(curr_message)
-            message_duration -= 1
+        if player.message_duration > 0:
+            food_message(player.curr_message)
+            player.message_duration -= 1
             
-        for ball in spikeballs:
+        for ball in player.spikeballs:
             ball.display()
+        snake.display()
         pg.display.update()
-        for spikeball in spikeballs:
+        for spikeball in player.spikeballs:
             if spikeball.collide(snake, collision_radius):
                 if snake.shields > 0:
                     snake.shields -= 1
-                    spikeballs.remove(spikeball)
+                    player.spikeballs.remove(spikeball)
                 else:
                     game_over = True
-        for i in range(len(foods)):
-            if foods[i].collide(snake, collision_radius):
-                if foods[i].type == FoodNum.SPEED:
-                    snake.speed_up()
-                    curr_message = "Speed Increased!"
-                elif foods[i].type == FoodNum.SLOW:
-                    snake.slow_down()
-                    curr_message = "Speed Decreased"
-                elif foods[i].type == FoodNum.BONUS:
-                    game_score += game_level * 2
-                    curr_message = "Bonus Points!"
-                elif foods[i].type == FoodNum.MYSTERY:
-                    game_score += game_level * 2
-                    mystery_num = get_mystery()
-                    match mystery_num:
-                        case 0:
-                            curr_message = "One Bonus Point!"
-                            game_score += 1
-                        case 1:
-                            curr_message = "Super Bonus Points!"
-                            game_score += game_level * 3
-                        case 2:
-                            curr_message = "ULTIMATE BONUS POINTS!!!"
-                            game_score += game_level * 4
-                        case 3:
-                            curr_message = "Spikes, yikes!"
-                            for j in range(3):
-                                spikeballs.append(Spikeball())
-                        case 4:
-                            curr_message = "Growww!"
-                            for j in range(3):
-                                snake.grow()
-                        case 5:
-                            curr_message = "Level Up?!?"
-                            food_eaten += 9
-                        case 6:
-                            curr_message = "Spikes And Shields, Madness!"
-                            for j in range(10):
-                                spikeballs.append(Spikeball())
-                            snake.shields += 5
-                        case 7:
-                            curr_message = "Slow... down..."
-                            for j in range(3):
-                                snake.slow_down()
-                        case _:
-                            curr_message = "Nothing happened. Too bad."
-                    
-                elif foods[i].type == FoodNum.SHIELD:
-                    snake.shields += 1
-                    curr_message = "Spike Shield Active!"
-                if foods[i].type != FoodNum.NORMAL:
-                    message_duration = message_duration_max
-                foods[i] = Food()
-                food_eaten += 1
+        for i in range(len(player.foods)):
+            if player.foods[i].collide(snake, collision_radius):
+                match player.foods[i].type:
+                    case FoodNum.SPEED:
+                        snake.speed_up()
+                        player.message("Speed Increased!")
+                    case FoodNum.SLOW:
+                        snake.slow_down()
+                        player.message("Speed Decreased")
+                    case FoodNum.BONUS:
+                        player.add_score(2)
+                        player.message("Bonus Points!")
+                    case FoodNum.SHIELD:
+                        if snake.shields == 0:
+                            player.message("Spike Shield Activated!")
+                        else:
+                            player.message("Spike Shield Increased!")
+                        snake.shields += 1
+                    case FoodNum.MYSTERY:
+                        snake.mystery_effect(player)
+                    case _:
+                        pass
+                player.foods[i] = Food()
+                player.eat_food()
                 snake.grow()
-                game_score += game_level
-                game_level = math.ceil(food_eaten/10)
-                if game_level > previous_level:
-                    snake.speed_up()
-                    previous_level = game_level
-                    for i in range((game_level // 5) +1):
-                        spikeballs.append(Spikeball())
+                player.add_score()
                 break
         clock.tick(clock_speed)
 
