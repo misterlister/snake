@@ -1,12 +1,14 @@
-# snake #
+# Snake #
 
 My take on the classic "Snake" game, using the Pygame Library
 
-Controls:
+## Controls ##
 
 Use the arrow keys to move the head of the snake.
 
-Objectives:
+Press spacebar to pause or unpause the game
+
+## Objectives ##
 
 Avoid making contact with any of your body segments, the edges of the screen, or with SpikeBalls!
 

@@ -45,7 +45,7 @@ clock = pg.time.Clock()
 
 sprite_scale = 1.25
 seg_length = 20 * sprite_scale
-seg_spacing = seg_length - 1
+seg_spacing = seg_length -1
 start_speed = 3
 min_speed = 2
 # How many food objects will spawn
@@ -75,12 +75,14 @@ if heading_font not in pg.font.get_fonts():
 if message_font not in pg.font.get_fonts():
     message_font = default_font
 
-font_style = pg.font.SysFont(heading_font, 25)
-title_font = pg.font.SysFont(heading_font, 65)
+font_style = pg.font.SysFont(heading_font, 40)
+title_font = pg.font.SysFont(heading_font, 85)
 high_score_font = pg.font.SysFont(heading_font, 45)
+pause_font = pg.font.SysFont(heading_font, 85)
 score_font = pg.font.SysFont(message_font, 30)
 level_font = pg.font.SysFont(message_font, 35)
 message_font = pg.font.SysFont(message_font, 35)
+
 
 shadow_offset = 2
 
@@ -115,12 +117,12 @@ def your_shields(shields):
     value = level_font.render("Shields: " + str(shields), True, yellow_col)
     dis.blit(value, [dis_width*2/5, 0])
 
-def food_message(message):
-    shadow = message_font.render(message, True, black_col)
-    to_print = message_font.render(message, True, yellow_col)
-    shadow_rect = shadow.get_rect(center=dis.get_rect().center)
+def food_text(text):
+    shadow = message_font.render(text, True, black_col)
+    to_print = message_font.render(text, True, yellow_col)
+    shadow_rect = shadow.get_rect(midtop=(dis_width *1/2, header_height*2))
     shadow_rect = shadow_rect.move(shadow_offset, shadow_offset)
-    msg_rect = to_print.get_rect(center=dis.get_rect().center)
+    msg_rect = to_print.get_rect(midtop=(dis_width *1/2, header_height*2))
     dis.blit(shadow, shadow_rect)
     dis.blit(to_print, msg_rect)
 
@@ -128,6 +130,15 @@ def message(msg, colour):
     msg_text = font_style.render(msg, True, colour)
     msg_rect = msg_text.get_rect(center=dis.get_rect().center)
     dis.blit(msg_text, msg_rect)
+
+def pause_text(text):
+    shadow = pause_font.render(text, True, black_col)
+    to_print = pause_font.render(text, True, red_col)
+    shadow_rect = shadow.get_rect(center=dis.get_rect().center)
+    shadow_rect = shadow_rect.move(shadow_offset, shadow_offset)
+    msg_rect = to_print.get_rect(center=dis.get_rect().center)
+    dis.blit(shadow, shadow_rect)
+    dis.blit(to_print, msg_rect)
 
 def header_bar():
     header_rect = pg.Rect(0, 0, dis_width, header_height)
@@ -644,6 +655,7 @@ def score_screen():
 def gameLoop():
     game_over = False
     game_close = False
+    game_paused = False
 
     snake = Snake()
     player = Player(snake)
@@ -677,58 +689,64 @@ def gameLoop():
                     snake.change_direction(Direction.UP)
                 elif event.key == pg.K_DOWN:
                     snake.change_direction(Direction.DOWN)
+                elif event.key == pg.K_SPACE:
+                    game_paused = not game_paused
 
-        dis.fill(background_col)
-        header_bar()
-        for food in player.foods:
-            food.display()
-        if snake.move() is False:
-            game_over = True
-        your_score(player.score)
-        your_level(player.level)
-        your_shields(snake.shields)
-        if player.message_duration > 0:
-            food_message(player.curr_message)
-            player.message_duration -= 1
-            
-        for ball in player.spikeballs:
-            ball.display()
-        snake.display()
-        pg.display.update()
-        for spikeball in player.spikeballs:
-            if spikeball.collide(snake, collision_radius):
-                if snake.shields > 0:
-                    snake.shields -= 1
-                    player.spikeballs.remove(spikeball)
-                else:
-                    game_over = True
-        for i in range(len(player.foods)):
-            if player.foods[i].collide(snake, collision_radius):
-                match player.foods[i].type:
-                    case FoodNum.SPEED:
-                        snake.speed_up()
-                        player.message("Speed Increased!")
-                    case FoodNum.SLOW:
-                        snake.slow_down()
-                        player.message("Speed Decreased")
-                    case FoodNum.BONUS:
-                        player.add_score(2)
-                        player.message("Bonus Points!")
-                    case FoodNum.SHIELD:
-                        if snake.shields == 0:
-                            player.message("Spike Shield Activated!")
-                        else:
-                            player.message("Spike Shield Increased!")
-                        snake.shields += 1
-                    case FoodNum.MYSTERY:
-                        snake.mystery_effect(player)
-                    case _:
-                        pass
-                player.foods[i] = Food()
-                player.eat_food()
-                snake.grow()
-                player.add_score()
-                break
+        if game_paused:
+            pause_text("- Game Paused -")
+            pg.display.update()
+        else:    
+            dis.fill(background_col)
+            header_bar()
+            for food in player.foods:
+                food.display()
+            if snake.move() is False:
+                game_over = True
+            your_score(player.score)
+            your_level(player.level)
+            your_shields(snake.shields)
+            if player.message_duration > 0:
+                food_text(player.curr_message)
+                player.message_duration -= 1
+                
+            for ball in player.spikeballs:
+                ball.display()
+            snake.display()
+            pg.display.update()
+            for spikeball in player.spikeballs:
+                if spikeball.collide(snake, collision_radius):
+                    if snake.shields > 0:
+                        snake.shields -= 1
+                        player.spikeballs.remove(spikeball)
+                    else:
+                        game_over = True
+            for i in range(len(player.foods)):
+                if player.foods[i].collide(snake, collision_radius):
+                    match player.foods[i].type:
+                        case FoodNum.SPEED:
+                            snake.speed_up()
+                            player.message("Speed Increased!")
+                        case FoodNum.SLOW:
+                            snake.slow_down()
+                            player.message("Speed Decreased")
+                        case FoodNum.BONUS:
+                            player.add_score(2)
+                            player.message("Bonus Points!")
+                        case FoodNum.SHIELD:
+                            if snake.shields == 0:
+                                player.message("Spike Shield Activated!")
+                            else:
+                                player.message("Spike Shield Increased!")
+                            snake.shields += 1
+                        case FoodNum.MYSTERY:
+                            snake.mystery_effect(player)
+                        case _:
+                            pass
+                    player.foods[i] = Food()
+                    player.eat_food()
+                    snake.grow()
+                    player.add_score()
+                    break
         clock.tick(clock_speed)
 
     pg.quit()
