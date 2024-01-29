@@ -399,7 +399,7 @@ class Snake(Sprite):
             case 3:
                 player.message("Spikes, yikes!")
                 for j in range(3):
-                    player.spikeballs.append(Spikeball())
+                    player.create_spikeball()
             case 4:
                 player.message("Growww!")
                 for j in range(3):
@@ -410,7 +410,7 @@ class Snake(Sprite):
             case 6:
                 player.message("Spikes And Shields, Madness!")
                 for j in range(10):
-                    player.spikeballs.append(Spikeball())
+                    player.create_spikeball()
                 self.shields += 5
             case 7:
                 player.message("Slow... down...")
@@ -598,7 +598,8 @@ class Player():
         self.foods = []
         self.snake = snake
         for i in range(num_food):
-            self.foods.append(Food())
+            self.foods.append(None)
+            self.create_food(i)
 
     def add_score(self, multiplier = 1, adder = 0):
         self.score += (self.level * multiplier) + adder
@@ -612,8 +613,63 @@ class Player():
     def level_up(self):
         self.level += 1
         for i in range((self.level // 5) +1):
-            self.spikeballs.append(Spikeball())
+            self.create_spikeball()
         self.snake.speed_up()
+    
+    def create_spikeball(self):
+        valid_space = False
+        while not valid_space:
+            self.spikeballs.append(Spikeball())
+            valid_space = True
+            # if the new spikeball is close to the snake's head, it is not valid
+            if self.spikeballs[-1].collide(self.snake, safe_radius):
+                valid_space = False
+            if valid_space:
+                # if the new spikeball is within the snake's body, it is not valid
+                for segment in self.snake.body:
+                    if self.spikeballs[-1].collide(segment, collision_radius):
+                        valid_space = False
+            if valid_space:
+                # if the new spikeball is in the same space as a piece of food, it is not valid
+                for food in self.foods:
+                    if self.spikeballs[-1].collide(food, collision_radius):
+                        valid_space = False
+            if valid_space:
+                # if the new spikeball is in the same space as another spikeball, it is not valid
+                for ball in self.spikeballs[:-1]:
+                    if self.spikeballs[-1].collide(ball, collision_radius):
+                        valid_space = False
+            # if the new spikeball is in an invalid location, delete it and create another
+            if not valid_space:
+                del self.spikeballs[-1]
+        
+    def create_food(self, index):
+        valid_space = False
+        while not valid_space:
+            self.foods[index] = (Food())
+            valid_space = True
+            # if the new food is close to the snake's head, it is not valid
+            if self.foods[index].collide(self.snake, safe_radius):
+                valid_space = False
+            if valid_space:
+                # if the new food is within the snake's body, it is not valid
+                for segment in self.snake.body:
+                    if self.foods[index].collide(segment, collision_radius):
+                        valid_space = False
+            if valid_space:
+                # if the new spikeball is in the same space as a piece of food, it is not valid
+                for food in self.foods[:index]:
+                    if self.foods[index].collide(food, collision_radius):
+                        valid_space = False
+                for food in self.foods[index+1:]:
+                    if self.foods[index].collide(food, collision_radius):
+                        valid_space = False
+            if valid_space:
+                # if the new food is in the same space as a spikeball, it is not valid
+                for ball in self.spikeballs[:-1]:
+                    if self.foods[index].collide(ball, collision_radius):
+                        valid_space = False
+            # if the new spikeball is in an invalid location, the loop will replace it
 
     def message(self, text):
         self.curr_message = text
@@ -742,7 +798,7 @@ def gameLoop():
                             snake.mystery_effect(player)
                         case _:
                             pass
-                    player.foods[i] = Food()
+                    player.create_food(i)
                     player.eat_food()
                     snake.grow()
                     player.add_score()
