@@ -24,7 +24,6 @@ white_col = (255, 255, 255) #colour for the background of the game over screen
 yellow_col = (255, 215, 0) #colour for score and food effect text
 header_col = (0, 0, 150) #colour for the header background
 
-
 dis_width = 1280
 dis_height = 920
 
@@ -32,8 +31,6 @@ header_height = 55
 line_width = 3
 
 play_height = dis_height-header_height
-
-
 
 clock_speed = 60
 
@@ -55,7 +52,6 @@ num_food_types = 12
 message_duration_max = 50
 blindness_time_max = 300
 blindness_time_phase = blindness_time_max / 10
-
 
 tail_radius = 1/2 * seg_length
 collision_radius = 3/4 * seg_length
@@ -83,7 +79,6 @@ score_font = pg.font.SysFont(message_font, 30)
 level_font = pg.font.SysFont(message_font, 35)
 message_font = pg.font.SysFont(message_font, 35)
 
-
 shadow_offset = 2
 
 def load_image(name, scale = sprite_scale):
@@ -96,8 +91,6 @@ def load_image(name, scale = sprite_scale):
 
     image.convert()
     return image, image.get_rect()
-
-
 
 def your_score(score):
     value = score_font.render("Score: " + str(score), True, black_col)
@@ -143,7 +136,6 @@ def pause_text(text):
 def header_bar():
     header_rect = pg.Rect(0, 0, dis_width, header_height)
     pg.draw.rect(dis, header_col, header_rect)
-    
     pg.draw.line(dis, black_col, (0, header_height-line_width), (dis_width, header_height-line_width), line_width)
 
 def title_banner():
@@ -427,7 +419,6 @@ class Snake(Sprite):
             case _:
                 player.message("Nothing happened. Too bad.")
                         
-
     class Segment():
         def __init__(self, head, x, y, direction):
             self.x = x
@@ -521,30 +512,46 @@ class Spikeball(Sprite):
         self.rect.center = self.x, self.y
 
 class FoodNum(IntEnum):
-    
-    # key for speed increasing food
+    # number keys for each type of food
     SPEED = 1
-    SPEEDRARITY = 10
-    # key for speed decreasing food
     SLOW = 2
-    SLOWRARITY = 10
-    # key for food that gives bonus points
     BONUS = 3
-    BONUSRARITY = 15
-    # key for mystery food
     MYSTERY = 4
-    MYSTERYRARITY = 8
-    # key for shield food
     SHIELD = 5
-    SHIELDRARITY = 5
-
-    SPECIALRARITY = SPEEDRARITY + SLOWRARITY + BONUSRARITY + MYSTERYRARITY + SHIELDRARITY
-
     NORMAL = 0
-    
-    NORMALRARITY = SPECIALRARITY
 
-    TOTALRARITY = NORMALRARITY + SPECIALRARITY
+foodType = {
+    FoodNum.SPEED: {
+        "rarity": 10,
+        "sprite": "Speed_Food.png"
+    },
+    FoodNum.SLOW: {
+        "rarity": 10,
+        "sprite": "Slow_Food.png"
+    },
+    FoodNum.BONUS: {
+        "rarity": 15,
+        "sprite": "Bonus_Food.png"
+    },
+    FoodNum.MYSTERY: {
+        "rarity": 8,
+        "sprite": "Mystery_Food.png"
+    },
+    FoodNum.SHIELD: {
+        "rarity": 5,
+        "sprite": "Shield_Food.png"
+    },
+    FoodNum.NORMAL: {
+        "rarity": 50,
+        "sprite": "Normal_Food.png"
+    }
+}
+
+# generates the total of all rarity variables, to use for random generation
+total_rarity = 0
+for food in foodType:
+    total_rarity += foodType[food]["rarity"]
+
 
 class Food(Sprite):
     def __init__(self):
@@ -556,36 +563,13 @@ class Food(Sprite):
         self.rect.center = self.x, self.y
 
     def __get_type_and_sprite(self):
-        type_code = round(random.randrange(0, FoodNum.TOTALRARITY))
-
-        type_code -= FoodNum.SPEEDRARITY
-        if type_code <= 0:
-            self.sprite = "Speed_Food.png"
-            self.type = FoodNum.SPEED
-            return
-        type_code -= FoodNum.SLOWRARITY
-        if  type_code <= 0:
-            self.sprite = "Slow_Food.png"
-            self.type = FoodNum.SLOW
-            return
-        type_code -= FoodNum.BONUSRARITY
-        if  type_code <= 0:
-            self.sprite = "Bonus_Food.png"
-            self.type = FoodNum.BONUS
-            return
-        type_code -= FoodNum.MYSTERYRARITY
-        if  type_code <= 0:
-            self.sprite = "Mystery_Food.png"
-            self.type = FoodNum.MYSTERY
-            return
-        type_code -= FoodNum.SHIELDRARITY
-        if  type_code <= 0:
-            self.sprite = "Shield_Food.png"
-            self.type = FoodNum.SHIELD
-            return
-        else:
-            self.sprite = "Normal_Food.png"
-            self.type = FoodNum.NORMAL
+        type_code = round(random.randrange(0, total_rarity))
+        for type in FoodNum:
+            type_code -= foodType[type]["rarity"]
+            if type_code <= 0:
+                self.sprite = foodType[type]["sprite"]
+                self.type = type
+                return
 
 class Player():
     def __init__(self, snake):
