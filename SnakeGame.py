@@ -745,13 +745,13 @@ def gameLoop():
             your_score(player.score)
             your_level(player.level)
             your_shields(snake.shields)
-            if player.message_duration > 0:
-                food_text(player.curr_message)
-                player.message_duration -= 1
                 
             for ball in player.spikeballs:
                 ball.display()
             snake.display()
+            if player.message_duration > 0:
+                food_text(player.curr_message)
+                player.message_duration -= 1
             pg.display.update()
             for spikeball in player.spikeballs:
                 if spikeball.collide(snake, collision_radius):
