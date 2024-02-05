@@ -60,7 +60,7 @@ safe_radius = 5 * seg_length
 # rate at which speed changes when eating speed changing food
 speed_inc = 1/2
 
-save_name = "highscores.txt"
+save_file_name = "highscores.txt"
 
 default_font = pg.font.get_default_font()
 heading_font = "bahnschrift"
@@ -145,7 +145,7 @@ def title_banner():
 
 def print_scores():
     banner = high_score_font.render("High Scores:", True, green_col)
-    f = open(save_name, "r")
+    f = open(save_file_name, "r")
     score_list = f.readlines()
     banner_rect = banner.get_rect(midtop=(dis_width *1/2, dis_height*1/15))
     score_renders = []
@@ -191,11 +191,11 @@ def get_name(score):
         user_text = "Unnamed"
     return user_text
 
-def write_scores(score):
-    if not os.path.isfile(save_name):
-        with open(save_name, "w"):
+def write_scores(score, level):
+    if not os.path.isfile(save_file_name):
+        with open(save_file_name, "w"):
             pass
-    f = open(save_name, "r")
+    f = open(save_file_name, "r")
     score_list = f.readlines()
     f.close()
     score_dict = {}
@@ -204,9 +204,11 @@ def write_scores(score):
         for entry in score_list:
             words = entry.split()
             score_dict[words[0]] = int(words[1])
+            # if there are less than 10 scores, add the new one
         if len(score_dict) < 10:
             add_score = True
         else:
+            # otherwise, add the new score if it is higher than a recorded one
             for record in score_dict:
                 if score > score_dict[record]:
                     add_score = True
@@ -228,7 +230,7 @@ def write_scores(score):
             user_name += "1"
     score_dict[user_name] = score
     score_dict = dict(sorted(score_dict.items(), key=lambda x:x[1], reverse=True))
-    f = open(save_name, "w")
+    f = open(save_file_name, "w")
     for record in score_dict:
         f.write(f"{record}    {score_dict[record]}\n")
     f.close()
@@ -239,6 +241,11 @@ class Direction(IntEnum):
     DOWN = 180
     LEFT = 90
     RIGHT = 270
+
+class DestinationNode():
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
 
 class Sprite():
     def __init__(self):
@@ -271,7 +278,7 @@ class Snake(Sprite):
         self.shields = 0
         self.direction = Direction.UP
         self.body.append(self.Segment(self, self.x, self.y+seg_spacing, self.direction))#
-        self.body[0].destinations.append((self.x, self.y))
+        self.body[0].destinations.append(DestinationNode(self.x, self.y))
         self.tail = self.body[0]
         self.seg_image_V = self.seg_image_H = self.shield_image = self.shield_rect = None
         self.corner_UR = self.corner_RD = self.corner_DL = self.corner_LU = None
@@ -327,7 +334,7 @@ class Snake(Sprite):
             new_x = self.tail.x - seg_length
             new_y = self.tail.y
         self.body.append(self.Segment(self, new_x, new_y, self.tail.direction))
-        self.body[-1].destinations.append((self.tail.x, self.tail.y))
+        self.body[-1].destinations.append(DestinationNode(self.tail.x, self.tail.y))
         self.tail.to_segment()
         self.tail = self.body[-1]
         self.length += 1
@@ -346,12 +353,16 @@ class Snake(Sprite):
             self.x -= self.speed
         elif self.direction == Direction.RIGHT:
             self.x += self.speed
+        # check if the snake has collided with a screen edge
         if self.x >= dis_width or self.x < 0 or self.y >= dis_height or self.y < header_height:
             return False
-        next_destinations = [(self.x, self.y)]
+        # create a new destination node
+        next_destinations = [DestinationNode(self.x, self.y)]
         for i in range (self.length):
+            # check if the snake has collided with its body
             if self.collide(self.body[i], tail_radius):
                 return False
+            # send the new destination node to the body
             next_destinations = self.body[i].move(next_destinations)
         return True
 
@@ -441,30 +452,52 @@ class Snake(Sprite):
             movement = self.head.speed
             # while there is more movement to be done, and there are still destinations to reach
             while movement > 0 and len(self.destinations) > 0:
-                # check if this segment isn't on the same x coordinate of the destination
-                if self.x != self.destinations[0][0]:
-                    # if this node is to the left of the destination's x-coordinate, move left
-                    if self.x > self.destinations[0][0]:
-                        self.x -= speed_inc
-                        self.update_direction(Direction.LEFT)
-                    else:
-                        self.x += speed_inc
-                        self.update_direction(Direction.RIGHT)
-                    movement -= speed_inc
-                # check if this segment isn't on the same y-coordinate of the destination
-                elif self.y != self.destinations[0][1]:
-                    if self.y > self.destinations[0][1]:
-                        self.y -= speed_inc
-                        self.update_direction(Direction.UP)
-                    else:
-                        self.y += speed_inc
-                        self.update_direction(Direction.DOWN)
-                    movement -= speed_inc
+                distance = self.calc_distance()
+                # this segment has reached the current destination
+                if distance == 0:
+                    passed_destinations.append(self.destinations.pop(0))
+                    self.update_direction(self.calc_direction())
                 else:
-                    # if this segment has reached the destination, move it from the destination list to the passed list
-                    passed_destinations.append(self.destinations.pop(0)) 
+                    move_range = self.calc_movement_range(distance, movement)
+                    if self.direction == Direction.UP:
+                        self.y -= move_range
+                    elif self.direction == Direction.DOWN:
+                        self.y += move_range
+                    elif self.direction == Direction.LEFT:
+                        self.x -= move_range
+                    else:
+                        self.x += move_range
+                    self.update_direction(self.direction)
+                    movement -= move_range
+            distance = self.calc_distance()
+            # this segment has reached the current destination
+            if distance == 0:
+                passed_destinations.append(self.destinations.pop(0))
+                self.update_direction(self.calc_direction())
             self.update_sprite()
             return passed_destinations
+        
+        def calc_distance(self):
+            if self.direction == Direction.UP or self.direction == Direction.DOWN:
+                return abs(self.y - self.destinations[0].y)
+            else:
+                return abs(self.x - self.destinations[0].x)
+            
+        def calc_direction(self):
+            if self.x > self.destinations[0].x:
+                return Direction.LEFT
+            elif self.x < self.destinations[0].x:
+                return Direction.RIGHT
+            elif self.y > self.destinations[0].y:
+                return Direction.UP
+            else:
+                return Direction.DOWN
+        
+        def calc_movement_range(self, distance, movement):
+            if distance <= movement:
+                return distance
+            if distance > movement:
+                return movement
         
         def rotate(self,angle):
             self.image = pg.transform.rotate(self.image, angle)
@@ -714,7 +747,7 @@ def gameLoop():
                     game_over = False
                     game_close = True
                 if event.type == pg.KEYDOWN:
-                    write_scores(player.score)
+                    write_scores(player.score, player.level)
                     gameLoop()
 
         for event in pg.event.get():
