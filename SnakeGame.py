@@ -262,13 +262,13 @@ class Snake(Sprite):
         
     def load_sprites(self):
         self.image, self.rect = load_image("Snake_Head.png")
-        self.seg_image_V, self.rect = load_image("Snake_Segment.png")
+        self.seg_image_V, self.rect = load_image("Snake_Body.png")
         self.seg_image_H = pg.transform.rotate(self.seg_image_V, Direction.RIGHT)
         self.shield_image, self.shield_rect = load_image("Spike_Shield.png")
         self.corner_UR, self.rect = load_image("Snake_Corner.png")
-        self.corner_RD = pg.transform.rotate(self.seg_image_V, Direction.RIGHT)
-        self.corner_DL = pg.transform.rotate(self.seg_image_V, Direction.DOWN)
-        self.corner_LU = pg.transform.rotate(self.seg_image_V, Direction.LEFT)
+        self.corner_RD = pg.transform.rotate(self.corner_UR, Direction.RIGHT)
+        self.corner_DL = pg.transform.rotate(self.corner_UR, Direction.DOWN)
+        self.corner_LU = pg.transform.rotate(self.corner_UR, Direction.LEFT)
         for i in range (1, 11):
             current_image, self.blindness_rect = load_image(f"Fog_of_Food-{i}.png")
             self.blindness_levels.append(current_image)
@@ -309,6 +309,7 @@ class Snake(Sprite):
         self.body.append(self.Segment(self, new_x, new_y, self.tail.direction))
         self.body[-1].destinations.append(DestinationNode(self.tail.x, self.tail.y))
         self.tail.to_segment()
+        self.tail.is_tail = False
         self.tail = self.body[-1]
         self.length += 1
 
@@ -424,29 +425,23 @@ class Snake(Sprite):
             # keep track of the current segment's total movement for this frame
             movement = self.head.speed
             # while there is more movement to be done, and there are still destinations to reach
-            while movement > 0 and len(self.destinations) > 0:
+            while movement > 0:
                 distance = self.calc_distance()
+               
+                move_range = self.calc_movement_range(distance, movement)
+                if self.direction == Direction.UP:
+                    self.y -= move_range
+                elif self.direction == Direction.DOWN:
+                    self.y += move_range
+                elif self.direction == Direction.LEFT:
+                    self.x -= move_range
+                else:
+                    self.x += move_range
+                movement -= move_range
                 # this segment has reached the current destination
                 if distance == 0:
                     passed_destinations.append(self.destinations.pop(0))
                     self.update_direction(self.calc_direction())
-                else:
-                    move_range = self.calc_movement_range(distance, movement)
-                    if self.direction == Direction.UP:
-                        self.y -= move_range
-                    elif self.direction == Direction.DOWN:
-                        self.y += move_range
-                    elif self.direction == Direction.LEFT:
-                        self.x -= move_range
-                    else:
-                        self.x += move_range
-                    self.update_direction(self.direction)
-                    movement -= move_range
-            distance = self.calc_distance()
-            # this segment has reached the current destination
-            if distance == 0:
-                passed_destinations.append(self.destinations.pop(0))
-                self.update_direction(self.calc_direction())
             self.update_sprite()
             return passed_destinations
         
@@ -497,19 +492,20 @@ class Snake(Sprite):
                 self.image = self.head.seg_image_H
             else:
                 self.image = self.head.seg_image_V
-            self.last_direction = self.direction
-            self.is_tail = False
 
         def to_corner(self):
-            if self.direction**2 + self.from_direction**2 == Direction.RIGHT**2 + Direction.DOWN**2:
+            if self.direction is Direction.RIGHT and self.from_direction is Direction.DOWN \
+            or self.direction is Direction.UP and self.from_direction is Direction.LEFT:
+                self.image = self.head.corner_UR
+            elif self.direction is Direction.RIGHT and self.from_direction is Direction.UP \
+            or self.direction is Direction.DOWN and self.from_direction is Direction.LEFT:
                 self.image = self.head.corner_RD
-            elif self.direction**2 + self.from_direction**2 == Direction.DOWN**2 + Direction.LEFT**2:
-                self.image = self.head.corner_DL
-            elif self.direction**2 + self.from_direction**2 == Direction.LEFT**2 + Direction.UP**2:
+            elif self.direction is Direction.LEFT and self.from_direction is Direction.DOWN \
+            or self.direction is Direction.UP and self.from_direction is Direction.RIGHT:
                 self.image = self.head.corner_LU
             else:
-                self.image = self.head.corner_UR
-            self.last_direction = self.direction
+                self.image = self.head.corner_DL
+                
 
 class Spikeball(Sprite):
     def __init__(self):
