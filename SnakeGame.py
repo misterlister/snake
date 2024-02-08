@@ -92,34 +92,7 @@ def load_image(name, scale = sprite_scale):
     image.convert()
     return image, image.get_rect()
 
-def your_score(score):
-    value = score_font.render("Score: " + str(score), True, black_col)
-    dis.blit(value, [0 + shadow_offset, 0 + shadow_offset])
-    value = score_font.render("Score: " + str(score), True, yellow_col)
-    dis.blit(value, [0, 0])
-
-def your_level(level):
-    value = level_font.render("Level: " + str(level), True, black_col)
-    dis.blit(value, [dis_width*7/8 + shadow_offset, 0 + shadow_offset])
-    value = level_font.render("Level: " + str(level), True, yellow_col)
-    dis.blit(value, [dis_width*7/8, 0])
-
-def your_shields(shields):
-    value = level_font.render("Shields: " + str(shields), True, black_col)
-    dis.blit(value, [dis_width*2/5 + shadow_offset, 0 + shadow_offset])
-    value = level_font.render("Shields: " + str(shields), True, yellow_col)
-    dis.blit(value, [dis_width*2/5, 0])
-
-def food_text(text):
-    shadow = message_font.render(text, True, black_col)
-    to_print = message_font.render(text, True, yellow_col)
-    shadow_rect = shadow.get_rect(midtop=(dis_width *1/2, header_height*2))
-    shadow_rect = shadow_rect.move(shadow_offset, shadow_offset)
-    msg_rect = to_print.get_rect(midtop=(dis_width *1/2, header_height*2))
-    dis.blit(shadow, shadow_rect)
-    dis.blit(to_print, msg_rect)
-
-def message(msg, colour):
+def display_text(msg, colour):
     msg_text = font_style.render(msg, True, colour)
     msg_rect = msg_text.get_rect(center=dis.get_rect().center)
     dis.blit(msg_text, msg_rect)
@@ -391,44 +364,44 @@ class Snake(Sprite):
         mystery_num = self.get_mystery()
         match mystery_num:
             case 0:
-                player.message("One Bonus Point!")
+                player.update_message("One Bonus Point!")
                 player.add_score(0, 1)
             case 1:
-                player.message("Super Bonus Points!")
+                player.update_message("Super Bonus Points!")
                 player.add_score(3)
             case 2:
-                player.message("ULTIMATE BONUS POINTS!!!")
+                player.update_message("ULTIMATE BONUS POINTS!!!")
                 player.add_score(4)
             case 3:
-                player.message("Spikes, yikes!")
+                player.update_message("Spikes, yikes!")
                 for j in range(3):
                     player.create_spikeball()
             case 4:
-                player.message("Growww!")
+                player.update_message("Growww!")
                 for j in range(3):
                     self.grow()
             case 5:
-                player.message("Level Up?!?")
+                player.update_message("Level Up?!?")
                 player.level_up()
             case 6:
-                player.message("Spikes And Shields, Madness!")
+                player.update_message("Spikes And Shields, Madness!")
                 for j in range(10):
                     player.create_spikeball()
                 self.shields += 5
             case 7:
-                player.message("Slow... down...")
+                player.update_message("Slow... down...")
                 for j in range(3):
                     self.slow_down()
             case 8:
-                player.message("Destroy Spikeballs!")
+                player.update_message("Destroy Spikeballs!")
                 for j in range(3):
                     if len(player.spikeballs) > 0:
                         del player.spikeballs[0]
             case 9:
-                player.message("Fog of Food!")
+                player.update_message("Fog of Food!")
                 self.activate_blindness()
             case _:
-                player.message("Nothing happened. Too bad.")
+                player.update_message("Nothing happened. Too bad.")
                         
     class Segment():
         def __init__(self, head, x, y, direction):
@@ -688,16 +661,43 @@ class Player():
                         valid_space = False
             # if the new spikeball is in an invalid location, the loop will replace it
 
-    def message(self, text):
+    def update_message(self, text):
         self.curr_message = text
         self.message_duration = message_duration_max
+
+    def print_score(self):
+        value = score_font.render("Score: " + str(self.score), True, black_col)
+        dis.blit(value, [0 + shadow_offset, 0 + shadow_offset])
+        value = score_font.render("Score: " + str(self.score), True, yellow_col)
+        dis.blit(value, [0, 0])
+
+    def print_level(self):
+        value = level_font.render("Level: " + str(self.level), True, black_col)
+        dis.blit(value, [dis_width*7/8 + shadow_offset, 0 + shadow_offset])
+        value = level_font.render("Level: " + str(self.level), True, yellow_col)
+        dis.blit(value, [dis_width*7/8, 0])
+
+    def print_shields(self):
+        value = level_font.render("Shields: " + str(self.snake.shields), True, black_col)
+        dis.blit(value, [dis_width*2/5 + shadow_offset, 0 + shadow_offset])
+        value = level_font.render("Shields: " + str(self.snake.shields), True, yellow_col)
+        dis.blit(value, [dis_width*2/5, 0])
+
+    def print_food_text(self):
+        shadow = message_font.render(self.curr_message, True, black_col)
+        to_print = message_font.render(self.curr_message, True, yellow_col)
+        shadow_rect = shadow.get_rect(midtop=(dis_width *1/2, header_height*2))
+        shadow_rect = shadow_rect.move(shadow_offset, shadow_offset)
+        msg_rect = to_print.get_rect(midtop=(dis_width *1/2, header_height*2))
+        dis.blit(shadow, shadow_rect)
+        dis.blit(to_print, msg_rect)
 
 def start_screen():
     play = False
     while not play:
         dis.fill(black_col)
         title_banner()
-        message("Press P-Play, S-See High Scores, Q-Quit Game", white_col)
+        display_text("Press P-Play, S-See High Scores, Q-Quit Game", white_col)
         pg.display.update()
         for event in pg.event.get():
             if event.type == pg.QUIT:
@@ -738,8 +738,8 @@ def gameLoop():
     while not game_close:
         while game_over == True:
             dis.fill(black_col)
-            message("Game Over! Press any key to continue", red_col)
-            your_score(player.score)
+            display_text("Game Over! Press any key to continue", red_col)
+            player.print_score()
             pg.display.update()
             
             for event in pg.event.get():
@@ -775,15 +775,15 @@ def gameLoop():
                 food.display()
             if snake.move() is False:
                 game_over = True
-            your_score(player.score)
-            your_level(player.level)
-            your_shields(snake.shields)
+            player.print_score()
+            player.print_level()
+            player.print_shields()
                 
             for ball in player.spikeballs:
                 ball.display()
             snake.display()
             if player.message_duration > 0:
-                food_text(player.curr_message)
+                player.print_food_text()
                 player.message_duration -= 1
             pg.display.update()
             for spikeball in player.spikeballs:
@@ -798,18 +798,18 @@ def gameLoop():
                     match player.foods[i].type:
                         case FoodNum.SPEED:
                             snake.speed_up()
-                            player.message("Speed Increased!")
+                            player.update_message("Speed Increased!")
                         case FoodNum.SLOW:
                             snake.slow_down()
-                            player.message("Speed Decreased")
+                            player.update_message("Speed Decreased")
                         case FoodNum.BONUS:
                             player.add_score(2)
-                            player.message("Bonus Points!")
+                            player.update_message("Bonus Points!")
                         case FoodNum.SHIELD:
                             if snake.shields == 0:
-                                player.message("Spike Shield Activated!")
+                                player.update_message("Spike Shield Activated!")
                             else:
-                                player.message("Spike Shield Increased!")
+                                player.update_message("Spike Shield Increased!")
                             snake.shields += 1
                         case FoodNum.MYSTERY:
                             snake.mystery_effect(player)
