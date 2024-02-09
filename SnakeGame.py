@@ -42,7 +42,6 @@ clock = pg.time.Clock()
 
 sprite_scale = 1.25
 seg_length = 20 * sprite_scale
-seg_spacing = seg_length -1
 start_speed = 3
 min_speed = 2
 # How many food objects will spawn
@@ -250,15 +249,15 @@ class Snake(Sprite):
         self.speed = start_speed
         self.shields = 0
         self.direction = Direction.UP
-        self.body.append(self.Segment(self, self.x, self.y+seg_spacing, self.direction))#
-        self.body[0].destinations.append(DestinationNode(self.x, self.y))
-        self.tail = self.body[0]
         self.seg_image_V = self.seg_image_H = self.shield_image = self.shield_rect = None
         self.corner_UR = self.corner_RD = self.corner_DL = self.corner_LU = None
         self.blindness_time = 0
         self.blindness_levels = []
         self.blindness_rect = None
         self.load_sprites()
+        self.body.append(self.Segment(self, self.x, self.y+seg_length, self.direction))
+        self.body[0].destinations.append(DestinationNode(self.x, self.y))
+        self.tail = self.body[0]
         
     def load_sprites(self):
         self.image, self.rect = load_image("Snake_Head.png")
@@ -269,6 +268,11 @@ class Snake(Sprite):
         self.corner_RD = pg.transform.rotate(self.corner_UR, Direction.RIGHT)
         self.corner_DL = pg.transform.rotate(self.corner_UR, Direction.DOWN)
         self.corner_LU = pg.transform.rotate(self.corner_UR, Direction.LEFT)
+        self.tail_straight, self.rect = load_image("Snake_Tail.png")
+        self.tail_turnL1, self.rect = load_image("Snake_Tail_TurnL1.png")
+        self.tail_turnL2, self.rect = load_image("Snake_Tail_TurnL2.png")
+        self.tail_turnR1, self.rect = load_image("Snake_Tail_TurnR1.png")
+        self.tail_turnR2, self.rect = load_image("Snake_Tail_TurnR2.png")
         for i in range (1, 11):
             current_image, self.blindness_rect = load_image(f"Fog_of_Food-{i}.png")
             self.blindness_levels.append(current_image)
@@ -404,7 +408,7 @@ class Snake(Sprite):
             case _:
                 player.update_message("Nothing happened. Too bad.")
                         
-    class Segment():
+    class Segment(Sprite):
         def __init__(self, head, x, y, direction):
             self.x = x
             self.y = y
@@ -412,22 +416,22 @@ class Snake(Sprite):
             self.is_tail = True
             self.direction = direction
             self.from_direction = None
-            self.last_direction = direction
+            self.next_direction = direction
             self.destinations = []
-            self.image, self.rect = load_image("Snake_Tail.png")
+            self.image, self.rect = head.tail_straight, head.rect
             self.rotate(direction-Direction.UP)
 
         def move(self, new_destinations):
             # add new destinations to the destination list
             self.destinations.extend(new_destinations)
+            self.update_next_direction()
             # create a list to hold newly reached destinations to pass to the next segment
             passed_destinations = []
             # keep track of the current segment's total movement for this frame
             movement = self.head.speed
             # while there is more movement to be done, and there are still destinations to reach
             while movement > 0:
-                distance = self.calc_distance()
-               
+                distance = self.calc_distance(self, self.destinations[0])
                 move_range = self.calc_movement_range(distance, movement)
                 if self.direction == Direction.UP:
                     self.y -= move_range
@@ -441,22 +445,32 @@ class Snake(Sprite):
                 # this segment has reached the current destination
                 if distance == 0:
                     passed_destinations.append(self.destinations.pop(0))
-                    self.update_direction(self.calc_direction())
+                    self.update_direction(self.calc_direction(self, self.destinations[0]))
+                    self.update_next_direction()
             self.update_sprite()
             return passed_destinations
         
-        def calc_distance(self):
-            if self.direction == Direction.UP or self.direction == Direction.DOWN:
-                return abs(self.y - self.destinations[0].y)
-            else:
-                return abs(self.x - self.destinations[0].x)
+        def calc_distance(self, position1, position2):
+            return max(abs(position1.y - position2.y), abs(position1.x - position2.x))
             
-        def calc_direction(self):
-            if self.x > self.destinations[0].x:
+        def calc_next_turn(self):
+            distance = self.calc_distance(self, self.destinations[0])
+            i = 1
+            turn_direction = self.direction
+            while turn_direction == self.direction and i < len(self.destinations):
+                distance += self.calc_distance(self.destinations[i-1], self.destinations[i])
+                turn_direction = self.calc_direction(self.destinations[i-1], self.destinations[i])
+                i += 1
+            if turn_direction == self.direction:
+                return float('inf'), turn_direction
+            return distance, turn_direction
+            
+        def calc_direction(self, position1, position2):
+            if position1.x > position2.x:
                 return Direction.LEFT
-            elif self.x < self.destinations[0].x:
+            elif position1.x < position2.x:
                 return Direction.RIGHT
-            elif self.y > self.destinations[0].y:
+            elif position1.y > position2.y:
                 return Direction.UP
             else:
                 return Direction.DOWN
@@ -473,6 +487,10 @@ class Snake(Sprite):
         def update_direction(self, new_direction):
             self.from_direction = self.direction
             self.direction = new_direction
+
+        def update_next_direction(self):
+            if len(self.destinations) > 1:
+                self.next_direction = self.calc_direction(self.destinations[0], self.destinations[1])
         
         def update_sprite(self):
             if self.is_tail:
@@ -483,9 +501,29 @@ class Snake(Sprite):
                 self.to_corner()
 
         def turn_tail(self):
-            angle = self.direction - self.last_direction
-            self.rotate(angle)
-            self.last_direction = self.direction
+            turn_distance, abs_turn_direction = self.calc_next_turn()
+            # Check if the tail is going straight or preparing to turn
+            if turn_distance < (2*seg_length)/3:
+                # Determine if this is a left turn or right turn
+                tail_turn_dir = self.direction - abs_turn_direction
+                if abs(tail_turn_dir) > 90:
+                    tail_turn_dir *= -1
+                # Check if this is the first or second stage of a turn
+                if turn_distance < seg_length/3:
+                    if tail_turn_dir > 0:
+                        self.image = self.head.tail_turnR2
+                    else:
+                        self.image = self.head.tail_turnL2
+                else:
+                    if tail_turn_dir > 0:
+                        self.image = self.head.tail_turnR1
+                    else:
+                        self.image = self.head.tail_turnL1
+                self.rotate(self.direction)
+            else:
+                self.image = self.head.tail_straight
+                self.rotate(self.direction)
+                
 
         def to_segment(self):
             if self.direction == Direction.LEFT or self.direction == Direction.RIGHT:
