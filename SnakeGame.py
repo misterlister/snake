@@ -132,7 +132,7 @@ def print_scores():
         dis.blit(score_renders[i], score_rects[i])
     f.close()
 
-def get_name(score):
+def get_name(player):
     title_text = high_score_font.render("You got a High Score! Enter your name:", True, green_col)
     title_rect = title_text.get_rect(midtop=(dis_width *1/2, dis_height*1/6))
     user_text = ""
@@ -145,7 +145,7 @@ def get_name(score):
         dis.blit(text_surface, (input_rect.x+5, input_rect.y+5))
         input_rect.w = max(100, text_surface.get_width()+10)
         dis.blit(title_text, title_rect)
-        your_score(score)
+        player.print_score()
         pg.display.update()
         clock.tick(60)
         for event in pg.event.get():
@@ -163,7 +163,7 @@ def get_name(score):
         user_text = "Unnamed"
     return user_text
 
-def write_scores(score, level):
+def write_scores(player):
     if not os.path.isfile(save_file_name):
         with open(save_file_name, "w"):
             pass
@@ -182,7 +182,7 @@ def write_scores(score, level):
         else:
             # otherwise, add the new score if it is higher than a recorded one
             for record in score_dict:
-                if score > score_dict[record]:
+                if player.score > score_dict[record]:
                     add_score = True
         score_dict = dict(sorted(score_dict.items(), key=lambda x:x[1], reverse=True))
     else:
@@ -191,7 +191,7 @@ def write_scores(score, level):
         return
     while len(score_dict) >= 10:
         score_dict.popitem()
-    user_name = get_name(score)
+    user_name = get_name(player)
     i = 0
     while user_name in score_dict:
         while user_name[-(i+1)].isnumeric():
@@ -200,7 +200,7 @@ def write_scores(score, level):
             user_name = user_name[:-i] + str(int(user_name[-i:])+1)
         else:
             user_name += "1"
-    score_dict[user_name] = score
+    score_dict[user_name] = player.score
     score_dict = dict(sorted(score_dict.items(), key=lambda x:x[1], reverse=True))
     f = open(save_file_name, "w")
     for record in score_dict:
@@ -264,10 +264,9 @@ class Snake(Sprite):
         self.seg_image_V, self.rect = load_image("Snake_Body.png")
         self.seg_image_H = pg.transform.rotate(self.seg_image_V, Direction.RIGHT)
         self.shield_image, self.shield_rect = load_image("Spike_Shield.png")
-        self.corner_UR, self.rect = load_image("Snake_Corner.png")
-        self.corner_RD = pg.transform.rotate(self.corner_UR, Direction.RIGHT)
-        self.corner_DL = pg.transform.rotate(self.corner_UR, Direction.DOWN)
-        self.corner_LU = pg.transform.rotate(self.corner_UR, Direction.LEFT)
+        self.corner2, self.rect = load_image("Snake_Corner2.png")
+        self.cornerL1, self.rect = load_image("Snake_CornerL1.png")
+        self.cornerR1, self.rect = load_image("Snake_CornerR1.png")
         self.tail_straight, self.rect = load_image("Snake_Tail.png")
         self.tail_turnL1, self.rect = load_image("Snake_Tail_TurnL1.png")
         self.tail_turnL2, self.rect = load_image("Snake_Tail_TurnL2.png")
@@ -493,37 +492,62 @@ class Snake(Sprite):
                 self.next_direction = self.calc_direction(self.destinations[0], self.destinations[1])
         
         def update_sprite(self):
-            if self.is_tail:
-                self.turn_tail()
-            elif self.direction == self.from_direction:
-                self.to_segment()
-            else:
-                self.to_corner()
-
-        def turn_tail(self):
+            # Check the distance to the next turn, and the absolute direction of the turn
             turn_distance, abs_turn_direction = self.calc_next_turn()
-            # Check if the tail is going straight or preparing to turn
+            # If the next turn is close, turn the segment
             if turn_distance < (2*seg_length)/3:
-                # Determine if this is a left turn or right turn
-                tail_turn_dir = self.direction - abs_turn_direction
-                if abs(tail_turn_dir) > 90:
-                    tail_turn_dir *= -1
-                # Check if this is the first or second stage of a turn
-                if turn_distance < seg_length/3:
-                    if tail_turn_dir > 0:
-                        self.image = self.head.tail_turnR2
-                    else:
-                        self.image = self.head.tail_turnL2
+                if self.is_tail:
+                    self.turn_tail(turn_distance, abs_turn_direction)
                 else:
-                    if tail_turn_dir > 0:
-                        self.image = self.head.tail_turnR1
-                    else:
-                        self.image = self.head.tail_turnL1
-                self.rotate(self.direction)
+                    self.turn_segment(turn_distance, abs_turn_direction)
+            # Otherwise the segment will be going straight
+            else: 
+                if self.is_tail:
+                    self.to_tail()
+                else:
+                    self.to_segment()
+
+        def turn_tail(self, turn_distance, abs_turn_direction):
+            # Determine if this is a left turn or right turn
+            tail_turn_dir = self.direction - abs_turn_direction
+            if abs(tail_turn_dir) > 90:
+                tail_turn_dir *= -1
+            # Check if this is the first or second stage of a turn
+            if turn_distance < seg_length/3:
+                if tail_turn_dir > 0:
+                    self.image = self.head.tail_turnR2
+                else:
+                    self.image = self.head.tail_turnL2
             else:
-                self.image = self.head.tail_straight
+                if tail_turn_dir > 0:
+                    self.image = self.head.tail_turnR1
+                else:
+                    self.image = self.head.tail_turnL1
+            self.rotate(self.direction)
+
+        def turn_segment(self,turn_distance, abs_turn_direction):
+            # Determine if this is a left turn or right turn
+            seg_turn_dir = self.direction - abs_turn_direction
+            if abs(seg_turn_dir) > 90:
+                seg_turn_dir *= -1
+            # Check if this is the first or second stage of a turn
+            if turn_distance < seg_length/3:
+                self.image = self.head.corner2
+                if abs_turn_direction is Direction.LEFT and self.direction is Direction.DOWN \
+                    or abs_turn_direction is Direction.UP and self.direction is Direction.RIGHT:
+                    self.rotate(Direction.RIGHT)
+                elif abs_turn_direction is Direction.RIGHT and self.direction is Direction.DOWN \
+                    or abs_turn_direction is Direction.UP and self.direction is Direction.LEFT:
+                    self.rotate(Direction.DOWN)
+                elif abs_turn_direction is Direction.RIGHT and self.direction is Direction.UP \
+                    or abs_turn_direction is Direction.DOWN and self.direction is Direction.LEFT:
+                    self.rotate(Direction.LEFT)
+            else:
+                if seg_turn_dir > 0:
+                    self.image = self.head.cornerR1
+                else:
+                    self.image = self.head.cornerL1
                 self.rotate(self.direction)
-                
 
         def to_segment(self):
             if self.direction == Direction.LEFT or self.direction == Direction.RIGHT:
@@ -531,19 +555,9 @@ class Snake(Sprite):
             else:
                 self.image = self.head.seg_image_V
 
-        def to_corner(self):
-            if self.direction is Direction.RIGHT and self.from_direction is Direction.DOWN \
-            or self.direction is Direction.UP and self.from_direction is Direction.LEFT:
-                self.image = self.head.corner_UR
-            elif self.direction is Direction.RIGHT and self.from_direction is Direction.UP \
-            or self.direction is Direction.DOWN and self.from_direction is Direction.LEFT:
-                self.image = self.head.corner_RD
-            elif self.direction is Direction.LEFT and self.from_direction is Direction.DOWN \
-            or self.direction is Direction.UP and self.from_direction is Direction.RIGHT:
-                self.image = self.head.corner_LU
-            else:
-                self.image = self.head.corner_DL
-                
+        def to_tail(self):
+            self.image = self.head.tail_straight
+            self.rotate(self.direction)          
 
 class Spikeball(Sprite):
     def __init__(self):
@@ -781,7 +795,7 @@ def gameLoop():
                     game_over = False
                     game_close = True
                 if event.type == pg.KEYDOWN:
-                    write_scores(player.score, player.level)
+                    write_scores(player)
                     gameLoop()
 
         for event in pg.event.get():
