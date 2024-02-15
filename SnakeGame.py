@@ -415,6 +415,8 @@ class Snake(Sprite):
             self.is_tail = True
             self.direction = direction
             self.from_direction = None
+            self.previous_direction = self.direction
+            self.from_distance = 0
             self.next_direction = direction
             self.destinations = []
             self.image, self.rect = head.tail_straight, head.rect
@@ -441,11 +443,17 @@ class Snake(Sprite):
                 else:
                     self.x += move_range
                 movement -= move_range
+                self.from_distance += move_range
                 # this segment has reached the current destination
                 if distance == 0:
+                    current_dir = self.direction
                     passed_destinations.append(self.destinations.pop(0))
                     self.update_direction(self.calc_direction(self, self.destinations[0]))
                     self.update_next_direction()
+                    if self.direction != current_dir:
+                        self.previous_direction = current_dir
+                        self.from_distance = 0
+
             self.update_sprite()
             return passed_destinations
         
@@ -505,7 +513,12 @@ class Snake(Sprite):
                 if self.is_tail:
                     self.to_tail()
                 else:
-                    self.to_segment()
+                    # If the segment is still in the process of turning, it should be curved
+                    if self.from_distance > 0 and self.from_distance < (2*seg_length)/3:
+                        self.finish_turn()
+                    # Otherwise, it will be a straight segment
+                    else:
+                        self.to_segment()
 
         def turn_tail(self, turn_distance, abs_turn_direction):
             # Determine if this is a left turn or right turn
@@ -524,6 +537,32 @@ class Snake(Sprite):
                 else:
                     self.image = self.head.tail_turnL1
             self.rotate(self.direction)
+
+        def finish_turn(self):
+            # Determine if this is a left turn or right turn
+            seg_turn_dir = self.previous_direction - self.direction
+            if abs(seg_turn_dir) > 90:
+                seg_turn_dir *= -1
+            # Check if this is the first or second stage of a turn
+            if self.from_distance < seg_length/3:
+                self.image = self.head.corner2
+                if self.direction is Direction.LEFT and self.previous_direction is Direction.DOWN \
+                    or self.direction is Direction.UP and self.previous_direction is Direction.RIGHT:
+                    self.rotate(Direction.RIGHT)
+                elif self.direction is Direction.RIGHT and self.previous_direction is Direction.DOWN \
+                    or self.direction is Direction.UP and self.previous_direction is Direction.LEFT:
+                    self.rotate(Direction.DOWN)
+                elif self.direction is Direction.RIGHT and self.previous_direction is Direction.UP \
+                    or self.direction is Direction.DOWN and self.previous_direction is Direction.LEFT:
+                    self.rotate(Direction.LEFT)
+            else:
+                if seg_turn_dir < 0:
+                    self.image = self.head.cornerR1
+                    self.rotate(Direction.RIGHT)
+                else:
+                    self.image = self.head.cornerL1
+                    self.rotate(Direction.LEFT)
+                self.rotate(self.previous_direction)
 
         def turn_segment(self,turn_distance, abs_turn_direction):
             # Determine if this is a left turn or right turn
