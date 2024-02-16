@@ -48,7 +48,7 @@ min_speed = 2
 num_food = 3
 # How many types of food there are
 num_food_types = 12
-message_duration_max = 50
+message_duration_max = 90
 blindness_time_max = 300
 blindness_time_phase = blindness_time_max / 10
 
@@ -248,8 +248,9 @@ class Snake(Sprite):
         self.length = 1
         self.speed = start_speed
         self.shields = 0
+        self.glow = 0
         self.direction = Direction.UP
-        self.seg_image_V = self.seg_image_H = self.shield_image = self.shield_rect = None
+        self.seg_image_V = self.seg_image_H = self.shield_image = self.shield_rect = self.glow_image = None
         self.corner_UR = self.corner_RD = self.corner_DL = self.corner_LU = None
         self.blindness_time = 0
         self.blindness_levels = []
@@ -264,6 +265,7 @@ class Snake(Sprite):
         self.seg_image_V, self.rect = load_image("Snake_Body.png")
         self.seg_image_H = pg.transform.rotate(self.seg_image_V, Direction.RIGHT)
         self.shield_image, self.shield_rect = load_image("Spike_Shield.png")
+        self.glow_image, self.glow_rect = load_image("Golden_Glow.png")
         self.corner2, self.rect = load_image("Snake_Corner2.png")
         self.cornerL1, self.rect = load_image("Snake_CornerL1.png")
         self.cornerR1, self.rect = load_image("Snake_CornerR1.png")
@@ -279,6 +281,7 @@ class Snake(Sprite):
     def rotate(self,angle):
         self.image = pg.transform.rotate(self.image, angle)
         self.shield_image = pg.transform.rotate(self.shield_image, angle)
+        self.glow_image = pg.transform.rotate(self.glow_image, angle)
 
     def place_object(self):
         self.x = dis_width / 2
@@ -291,6 +294,9 @@ class Snake(Sprite):
         if self.shields > 0:
             self.shield_rect.center = pg.Rect(self.x, self.y, seg_length, seg_length).center
             dis.blit(self.shield_image, (self.shield_rect))
+        if self.glow > 0:
+            self.glow_rect.center = pg.Rect(self.x, self.y, seg_length, seg_length).center
+            dis.blit(self.glow_image, (self.glow_rect))
         if self.blindness_time > 0:
             blind_image = self.process_blindness()
             self.blindness_rect.center = pg.Rect(self.x, self.y, seg_length, seg_length).center
@@ -343,8 +349,8 @@ class Snake(Sprite):
             next_destinations = self.body[i].move(next_destinations)
         return True
 
-    def speed_up(self):
-        self.speed += speed_inc
+    def speed_up(self, multiplier = 1):
+        self.speed += (speed_inc * multiplier)
 
     def slow_down(self):
         if self.speed - speed_inc <= min_speed:
@@ -606,7 +612,7 @@ class Spikeball(Sprite):
 
 class FoodNum(IntEnum):
     # number keys for each type of food
-    SPEED = 1
+    GLOW = 1
     SLOW = 2
     BONUS = 3
     MYSTERY = 4
@@ -614,12 +620,12 @@ class FoodNum(IntEnum):
     NORMAL = 0
 
 foodType = {
-    FoodNum.SPEED: {
+    FoodNum.GLOW: {
         "rarity": 10,
-        "sprite": "Speed_Food.png"
+        "sprite": "Glow_Food.png"
     },
     FoodNum.SLOW: {
-        "rarity": 10,
+        "rarity": 5,
         "sprite": "Slow_Food.png"
     },
     FoodNum.BONUS: {
@@ -679,6 +685,8 @@ class Player():
             self.create_food(i)
 
     def add_score(self, multiplier = 1, adder = 0):
+        if self.snake.glow > 0:
+            multiplier *= 2
         self.score += (self.level * multiplier) + adder
 
     def eat_food(self, quantity = 1):
@@ -691,7 +699,8 @@ class Player():
         self.level += 1
         for i in range((self.level // 5) +1):
             self.create_spikeball()
-        self.snake.speed_up()
+        speed_increment = (self.level // 5) + 1
+        self.snake.speed_up(speed_increment)
     
     def create_spikeball(self):
         valid_space = False
@@ -882,10 +891,14 @@ def gameLoop():
                         game_over = True
             for i in range(len(player.foods)):
                 if player.foods[i].collide(snake, collision_radius):
+                    snake.grow()
+                    player.add_score()
+                    if snake.glow > 0:
+                        snake.glow -= 1
                     match player.foods[i].type:
-                        case FoodNum.SPEED:
-                            snake.speed_up()
-                            player.update_message("Speed Increased!")
+                        case FoodNum.GLOW:
+                            snake.glow += 1
+                            player.update_message("Golden Glow! Double the next food's score!")
                         case FoodNum.SLOW:
                             snake.slow_down()
                             player.update_message("Speed Decreased")
@@ -904,8 +917,6 @@ def gameLoop():
                             pass
                     player.create_food(i)
                     player.eat_food()
-                    snake.grow()
-                    player.add_score()
                     break
         clock.tick(clock_speed)
 
