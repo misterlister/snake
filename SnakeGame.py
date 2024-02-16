@@ -23,6 +23,7 @@ red_col = (255, 0, 0) #colour for game over text
 white_col = (255, 255, 255) #colour for the background of the game over screen
 yellow_col = (255, 215, 0) #colour for score and food effect text
 header_col = (0, 0, 150) #colour for the header background
+transparent = (69, 69, 69) #colour to be used for transparency
 
 dis_width = 1280
 dis_height = 920
@@ -226,7 +227,7 @@ class Sprite():
         self.place_object()
         
     def display(self):
-        dis.blit(self.image, (self.x, self.y))
+        dis.blit(self.image, self.rect)
 
     def collide(self, obj, radius):
         if (obj.x - self.x <= radius and obj.x - self.x >= -radius):
@@ -288,15 +289,21 @@ class Snake(Sprite):
         self.y = (play_height / 2) + header_height
 
     def display(self):
-        dis.blit(self.image, (self.x, self.y))
+        self.rect.center = (self.x, self.y)
+        dis.blit(self.image, (self.rect))
         for segment in self.body:
-            dis.blit(segment.image, (segment.x, segment.y))
+            segment.rect.center = (segment.x, segment.y)
+            dis.blit(segment.image, (segment.rect))
         if self.shields > 0:
-            self.shield_rect.center = pg.Rect(self.x, self.y, seg_length, seg_length).center
+            self.shield_rect.center = (self.x, self.y)
             dis.blit(self.shield_image, (self.shield_rect))
         if self.glow > 0:
-            self.glow_rect.center = pg.Rect(self.x, self.y, seg_length, seg_length).center
+            self.glow_rect.center = (self.x, self.y)
             dis.blit(self.glow_image, (self.glow_rect))
+        blind_surface = pg.Surface((dis_width,play_height))
+        blind_surface.set_colorkey(transparent)
+        pg.draw.circle(blind_surface, transparent, (self.x, self.y), 50)
+        #dis.blit(blind_surface, (0, header_height))
         if self.blindness_time > 0:
             blind_image = self.process_blindness()
             self.blindness_rect.center = pg.Rect(self.x, self.y, seg_length, seg_length).center
