@@ -236,8 +236,9 @@ class Sprite():
         return False
     
     def place_object(self):
-        self.x = round(random.randrange(0, int(dis_width - seg_length)) / seg_length) * seg_length
-        self.y = (round(random.randrange(0, int(play_height - seg_length)) / seg_length) * seg_length) + header_height
+        margin = seg_length // 2
+        self.x = round(random.randrange(margin, int(dis_width - margin)))
+        self.y = round(random.randrange(margin, int(play_height - margin))) + header_height + margin
 
     def rotate(self,angle):
         self.image = pg.transform.rotate(self.image, angle)
