@@ -625,7 +625,7 @@ foodType = {
         "sprite": "Glow_Food.png"
     },
     FoodNum.SLOW: {
-        "rarity": 5,
+        "rarity": 10,
         "sprite": "Slow_Food.png"
     },
     FoodNum.BONUS: {
