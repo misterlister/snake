@@ -50,7 +50,7 @@ num_food = 3
 # How many types of food there are
 num_food_types = 12
 message_duration_max = 90
-blindness_time_max = 300
+blindness_time_max = 750
 blindness_time_phase = blindness_time_max / 10
 
 tail_radius = 1/2 * seg_length
@@ -255,8 +255,6 @@ class Snake(Sprite):
         self.seg_image_V = self.seg_image_H = self.shield_image = self.shield_rect = self.glow_image = None
         self.corner_UR = self.corner_RD = self.corner_DL = self.corner_LU = None
         self.blindness_time = 0
-        self.blindness_levels = []
-        self.blindness_rect = None
         self.load_sprites()
         self.body.append(self.Segment(self, self.x, self.y+seg_length, self.direction))
         self.body[0].destinations.append(DestinationNode(self.x, self.y))
@@ -276,9 +274,6 @@ class Snake(Sprite):
         self.tail_turnL2, self.rect = load_image("Snake_Tail_TurnL2.png")
         self.tail_turnR1, self.rect = load_image("Snake_Tail_TurnR1.png")
         self.tail_turnR2, self.rect = load_image("Snake_Tail_TurnR2.png")
-        for i in range (1, 11):
-            current_image, self.blindness_rect = load_image(f"Fog_of_Food-{i}.png")
-            self.blindness_levels.append(current_image)
 
     def rotate(self,angle):
         self.image = pg.transform.rotate(self.image, angle)
@@ -301,14 +296,18 @@ class Snake(Sprite):
         if self.glow > 0:
             self.glow_rect.center = (self.x, self.y)
             dis.blit(self.glow_image, (self.glow_rect))
-        blind_surface = pg.Surface((dis_width,play_height))
-        blind_surface.set_colorkey(transparent)
-        pg.draw.circle(blind_surface, transparent, (self.x, self.y), 50)
-        #dis.blit(blind_surface, (0, header_height))
         if self.blindness_time > 0:
-            blind_image = self.process_blindness()
-            self.blindness_rect.center = pg.Rect(self.x, self.y, seg_length, seg_length).center
-            dis.blit(blind_image, (self.blindness_rect))
+            blind_surface = pg.Surface((dis_width,play_height))
+            blind_surface.set_colorkey(transparent)
+            if self.blindness_time > blindness_time_max * (2/3) :
+                blindness_radius = blindness_time_max + 100 - (self.blindness_time)
+            elif self.blindness_time > blindness_time_max /3:
+                blindness_radius = blindness_time_max * (5/3) + 100 - (self.blindness_time * 2)
+            else:
+                blindness_radius = blindness_time_max * (6/3) + 100 - (self.blindness_time * 3)
+            self.blindness_time -= 1
+            pg.draw.circle(blind_surface, transparent, (self.x, self.y - header_height), blindness_radius)
+            dis.blit(blind_surface, (0, header_height))
     
     def grow(self):
         if self.tail.direction == Direction.UP:
@@ -368,11 +367,6 @@ class Snake(Sprite):
 
     def activate_blindness(self):
         self.blindness_time = blindness_time_max
-
-    def process_blindness(self):
-        blindness_phase = math.ceil(self.blindness_time / blindness_time_phase)
-        self.blindness_time -= 1
-        return self.blindness_levels[blindness_phase-1]
     
     def get_mystery(self):
         number = round(random.randrange(0, 10))
