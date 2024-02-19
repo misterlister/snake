@@ -1,12 +1,11 @@
 # 
-# This "Snake" game is based off of the Edureka tutorial found at https://www.edureka.co/blog/snake-game-with-pygame/
-# All additional features and implementation were designed and implemented by Hayden Lister
+# Project Name: Snake
+#
+# Designed and Developed by Hayden Lister
 #
 
 import pygame as pg
-import time
 import random
-import math
 import os
 import os.path
 from enum import IntEnum
@@ -623,15 +622,15 @@ class FoodNum(IntEnum):
 
 foodType = {
     FoodNum.GLOW: {
-        "rarity": 10,
+        "rarity": 15,
         "sprite": "Glow_Food.png"
     },
     FoodNum.SLOW: {
-        "rarity": 10,
+        "rarity": 5,
         "sprite": "Slow_Food.png"
     },
     FoodNum.BONUS: {
-        "rarity": 15,
+        "rarity": 20,
         "sprite": "Bonus_Food.png"
     },
     FoodNum.MYSTERY: {
@@ -639,7 +638,7 @@ foodType = {
         "sprite": "Mystery_Food.png"
     },
     FoodNum.SHIELD: {
-        "rarity": 5,
+        "rarity": 6,
         "sprite": "Shield_Food.png"
     },
     FoodNum.NORMAL: {
@@ -701,7 +700,7 @@ class Player():
         self.level += 1
         for i in range((self.level // 5) +1):
             self.create_spikeball()
-        speed_increment = (self.level // 5) + 1
+        speed_increment = (self.level // 10) + 1
         self.snake.speed_up(speed_increment)
     
     def create_spikeball(self):
