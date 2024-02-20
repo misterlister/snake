@@ -26,3 +26,31 @@ Different food types will have different effects:
 Eating enough food will increase the level, resulting in more points, but also more danger!
 
 Have fun!
+
+## Installing Requirements With a Virtual Environment ##
+
+To install the requirements to run this program, do the following:
+
+### Mac/Linux ###
+
+- Open a Terminal window
+- Navigate to the directory containing the SnakeGame.py file
+- Enter the following commands:
+  - python3 -m venv .venv
+  - source .venv/bin/activate
+  - python3 -m pip install --upgrade pip
+  - python3 -m pip install -r requirements.txt
+- Once you are done, you can leave the virtual environment by the command:
+  - deactivate
+
+### Windows ###
+
+- Open a Command Prompt window
+- Navigate to the directory containing the SnakeGame.py file
+- Enter the following commands:
+  - py -m venv .venv
+  - .venv/Scripts/activate
+  - py -m pip install --upgrade pip
+  - py -m pip install -r requirements.txt
+- Once you are done, you can leave the virtual environment by the command:
+  - deactivate
