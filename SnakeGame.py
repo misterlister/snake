@@ -389,7 +389,7 @@ class Snake(Sprite):
                     player.create_spikeball()
             case 4:
                 player.update_message("Growww!")
-                for j in range(3):
+                for j in range(self.length // 5):
                     self.grow()
             case 5:
                 player.update_message("Level Up?!?")
@@ -401,7 +401,7 @@ class Snake(Sprite):
                 self.shields += 5
             case 7:
                 player.update_message("Slow... down...")
-                for j in range(3):
+                for j in range(2):
                     self.slow_down()
             case 8:
                 player.update_message("Destroy Spikeballs!")
