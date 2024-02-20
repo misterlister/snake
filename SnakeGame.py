@@ -75,7 +75,7 @@ title_font = pg.font.SysFont(heading_font, 85)
 high_score_font = pg.font.SysFont(heading_font, 45)
 pause_font = pg.font.SysFont(heading_font, 85)
 score_font = pg.font.SysFont(message_font, 30)
-level_font = pg.font.SysFont(message_font, 35)
+header_font = pg.font.SysFont(message_font, 35)
 message_font = pg.font.SysFont(message_font, 35)
 
 shadow_offset = 2
@@ -392,7 +392,7 @@ class Snake(Sprite):
                 for j in range(self.length // 5):
                     self.grow()
             case 5:
-                player.update_message("Level Up?!?")
+                player.update_message("Free Level Up!")
                 player.level_up()
             case 6:
                 player.update_message("Spikes And Shields, Madness!")
@@ -763,21 +763,21 @@ class Player():
         self.message_duration = message_duration_max
 
     def print_score(self):
-        value = score_font.render("Score: " + str(self.score), True, black_col)
+        value = header_font.render("Score: " + str(self.score), True, black_col)
         dis.blit(value, [0 + shadow_offset, 0 + shadow_offset])
-        value = score_font.render("Score: " + str(self.score), True, yellow_col)
+        value = header_font.render("Score: " + str(self.score), True, yellow_col)
         dis.blit(value, [0, 0])
 
     def print_level(self):
-        value = level_font.render("Level: " + str(self.level), True, black_col)
+        value = header_font.render("Level: " + str(self.level), True, black_col)
         dis.blit(value, [dis_width*7/8 + shadow_offset, 0 + shadow_offset])
-        value = level_font.render("Level: " + str(self.level), True, yellow_col)
+        value = header_font.render("Level: " + str(self.level), True, yellow_col)
         dis.blit(value, [dis_width*7/8, 0])
 
     def print_shields(self):
-        value = level_font.render("Shields: " + str(self.snake.shields), True, black_col)
+        value = header_font.render("Shields: " + str(self.snake.shields), True, black_col)
         dis.blit(value, [dis_width*2/5 + shadow_offset, 0 + shadow_offset])
-        value = level_font.render("Shields: " + str(self.snake.shields), True, yellow_col)
+        value = header_font.render("Shields: " + str(self.snake.shields), True, yellow_col)
         dis.blit(value, [dis_width*2/5, 0])
 
     def print_food_text(self):
