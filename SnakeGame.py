@@ -235,7 +235,7 @@ class Sprite():
         return False
     
     def place_object(self):
-        margin = seg_length // 2
+        margin = int(seg_length // 2)
         self.x = round(random.randrange(margin, int(dis_width - margin)))
         self.y = round(random.randrange(margin, int(play_height - margin))) + header_height + margin
 
