@@ -2,6 +2,8 @@
 
 My take on the classic "Snake" game, using the Pygame Library
 
+![demo](sprites/snake-demo.gif)
+
 ## Controls ##
 
 Use the arrow keys to move the head of the snake.
