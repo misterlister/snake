@@ -29,7 +29,7 @@ class Sprite():
     def place_object(self):
         margin = int(SEG_LENGTH // 2)
         self.x = round(random.randrange(margin, int(DIS_WIDTH - margin)))
-        self.y = round(random.randrange(margin, int(PLAY_HEIGHT - margin))) + HEADER_HEIGHT + margin
+        self.y = round(random.randrange(margin, int(PLAY_HEIGHT - margin))) + HEADER_HEIGHT*2 + margin
 
     def rotate(self,angle):
         self.image = pg.transform.rotate(self.image, angle)
