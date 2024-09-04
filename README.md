@@ -2,7 +2,7 @@
 
 My take on the classic "Snake" game, using the Pygame Library
 
-![demo](sprites/snake-demo.gif)
+![demo](sprites/snake_demo.gif)
 
 ## Controls ##
 
