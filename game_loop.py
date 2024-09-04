@@ -13,6 +13,7 @@ from constants import (
     YELLOW_COL,
     BACKGROUND_COL,
     HEADER_COL,
+    MESSAGE_BAR_COL,
     SHADOW_OFFSET,
     COLLISION_RADIUS,
     SAVE_FILE_NAME,
@@ -78,6 +79,7 @@ def gameLoop():
         else:    
             dis.fill(BACKGROUND_COL)
             header_bar(dis)
+            message_bar(dis)
             for food in player.foods:
                 food.display()
             if snake.move() is False:
@@ -204,9 +206,20 @@ def pause_text(text, dis, fonts):
     dis.blit(to_print, msg_rect)
 
 def header_bar(dis):
+    # Draw header box
     header_rect = pg.Rect(0, 0, DIS_WIDTH, HEADER_HEIGHT)
+    # Fill header box with colour
     pg.draw.rect(dis, HEADER_COL, header_rect)
+    # Draw boundary line
     pg.draw.line(dis, BLACK_COL, (0, HEADER_HEIGHT-LINE_WIDTH), (DIS_WIDTH, HEADER_HEIGHT-LINE_WIDTH), LINE_WIDTH)
+    
+def message_bar(dis):
+    # Draw message bar
+    msg_rect = pg.Rect(0, HEADER_HEIGHT, DIS_WIDTH, HEADER_HEIGHT)
+    # Fill message bar with colour
+    pg.draw.rect(dis, MESSAGE_BAR_COL, msg_rect)
+    # Draw boundary line
+    pg.draw.line(dis, BLACK_COL, (0, HEADER_HEIGHT * 2 - LINE_WIDTH), (DIS_WIDTH, HEADER_HEIGHT * 2 - LINE_WIDTH), LINE_WIDTH)
 
 def title_banner(dis, fonts):
     msg_text = fonts["title_font"].render("Snake!", True, GREEN_COL)
