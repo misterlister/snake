@@ -26,6 +26,7 @@ RED_COL = (255, 0, 0) #colour for game over text
 WHITE_COL = (255, 255, 255) #colour for the background of the game over screen
 YELLOW_COL = (255, 215, 0) #colour for score and food effect text
 HEADER_COL = (0, 0, 150) #colour for the header background
+MESSAGE_BAR_COL = (0, 100, 100) # colour for the message header background
 TRANSPARENT = (69, 69, 69) #colour to be used for transparency
 
 DIS_WIDTH = 1280
@@ -34,7 +35,7 @@ DIS_HEIGHT = 920
 HEADER_HEIGHT = 55
 LINE_WIDTH = 3
 
-PLAY_HEIGHT = DIS_HEIGHT-HEADER_HEIGHT
+PLAY_HEIGHT = DIS_HEIGHT-HEADER_HEIGHT*2
 
 CLOCK_SPEED = 40
 
