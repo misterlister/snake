@@ -72,7 +72,7 @@ class Snake(Sprite):
         if self.blindness_time > 0:
             blind_surface = pg.Surface((DIS_WIDTH,PLAY_HEIGHT))
             blind_surface.set_colorkey(TRANSPARENT)
-            if self.blindness_time > BLINDNESS_TIME_MAX * (2/3) :
+            if self.blindness_time > BLINDNESS_TIME_MAX * (2/3):
                 blindness_radius = BLINDNESS_TIME_MAX + 100 - (self.blindness_time)
             elif self.blindness_time > BLINDNESS_TIME_MAX /3:
                 blindness_radius = BLINDNESS_TIME_MAX * (5/3) + 100 - (self.blindness_time * 2)
@@ -80,7 +80,7 @@ class Snake(Sprite):
                 blindness_radius = BLINDNESS_TIME_MAX * (6/3) + 100 - (self.blindness_time * 3)
             self.blindness_time -= 1
             pg.draw.circle(blind_surface, TRANSPARENT, (self.x, self.y - HEADER_HEIGHT), blindness_radius)
-            self.dis.blit(blind_surface, (0, HEADER_HEIGHT))
+            self.dis.blit(blind_surface, (0, HEADER_HEIGHT*2))
     
     def grow(self):
         if self.tail.direction == Direction.UP:
@@ -117,7 +117,7 @@ class Snake(Sprite):
         elif self.direction == Direction.RIGHT:
             self.x += self.speed
         # check if the snake has collided with a screen edge
-        if self.x >= DIS_WIDTH or self.x < 0 or self.y >= DIS_HEIGHT or self.y < HEADER_HEIGHT:
+        if self.x >= DIS_WIDTH or self.x < 0 or self.y >= DIS_HEIGHT or self.y < HEADER_HEIGHT * 2:
             return False
         # create a new destination node
         next_destinations = [DestinationNode(self.x, self.y)]
@@ -383,4 +383,3 @@ class DestinationNode():
     def __init__(self, x, y):
         self.x = x
         self.y = y
-
