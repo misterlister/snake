@@ -119,16 +119,19 @@ class Player():
         self.dis.blit(value, [DIS_WIDTH*7/8, 0])
 
     def print_shields(self):
-        value = self.fonts["header_font"].render("Shields: " + str(self.snake.shields), True, BLACK_COL)
-        self.dis.blit(value, [DIS_WIDTH*2/5 + SHADOW_OFFSET, 0 + SHADOW_OFFSET])
-        value = self.fonts["header_font"].render("Shields: " + str(self.snake.shields), True, YELLOW_COL)
-        self.dis.blit(value, [DIS_WIDTH*2/5, 0])
+        shadow = self.fonts["header_font"].render("Shields: " + str(self.snake.shields), True, BLACK_COL)
+        to_print = self.fonts["header_font"].render("Shields: " + str(self.snake.shields), True, YELLOW_COL)
+        shadow_rect = shadow.get_rect(midtop=(DIS_WIDTH/2, 0))
+        shadow_rect = shadow_rect.move(SHADOW_OFFSET, SHADOW_OFFSET)
+        msg_rect = to_print.get_rect(midtop=(DIS_WIDTH/2, 0))
+        self.dis.blit(shadow, shadow_rect)
+        self.dis.blit(to_print, msg_rect)
 
     def print_food_text(self):
         shadow = self.fonts["message_font"].render(self.curr_message, True, BLACK_COL)
         to_print = self.fonts["message_font"].render(self.curr_message, True, YELLOW_COL)
-        shadow_rect = shadow.get_rect(midtop=(DIS_WIDTH *1/2, HEADER_HEIGHT*2))
+        shadow_rect = shadow.get_rect(midtop=(DIS_WIDTH/2, HEADER_HEIGHT))
         shadow_rect = shadow_rect.move(SHADOW_OFFSET, SHADOW_OFFSET)
-        msg_rect = to_print.get_rect(midtop=(DIS_WIDTH *1/2, HEADER_HEIGHT*2))
+        msg_rect = to_print.get_rect(midtop=(DIS_WIDTH/2, HEADER_HEIGHT))
         self.dis.blit(shadow, shadow_rect)
         self.dis.blit(to_print, msg_rect)
