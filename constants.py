@@ -19,15 +19,16 @@ class Direction(IntEnum):
 MAIN_DIR = os.path.split(os.path.abspath(__file__))[0]
 SPRITES_DIR = os.path.join(MAIN_DIR, "sprites")
 
-BLACK_COL = (0, 0, 0) #colour for snake
-BACKGROUND_COL = (205, 225, 255) #colour for the main background screen
-GREEN_COL = (0, 155, 0) #colour for normal food
-RED_COL = (255, 0, 0) #colour for game over text
-WHITE_COL = (255, 255, 255) #colour for the background of the game over screen
-YELLOW_COL = (255, 215, 0) #colour for score and food effect text
-HEADER_COL = (0, 0, 150) #colour for the header background
+BLACK_COL = (0, 0, 0) # colour for snake
+BACKGROUND_COL = (205, 225, 255) # colour for the main background screen
+GREEN_COL = (0, 155, 0) # colour for normal food
+RED_COL = (255, 0, 0) # colour for game over text
+WHITE_COL = (255, 255, 255) # colour for the background of the game over screen
+YELLOW_COL = (255, 215, 0) # colour for score and food effect text
+LEVEL_ALERT_COL = (255, 80, 225) # colour for level up alert colour
+HEADER_COL = (0, 0, 150) # colour for the header background
 MESSAGE_BAR_COL = (0, 100, 100) # colour for the message header background
-TRANSPARENT = (69, 69, 69) #colour to be used for transparency
+TRANSPARENT = (69, 69, 69) # colour to be used for transparency
 
 DIS_WIDTH = 1280
 DIS_HEIGHT = 920
@@ -47,6 +48,9 @@ MIN_SPEED = 3
 NUM_FOOD = 3
 
 MESSAGE_DURATION_MAX = 90
+LEVEL_GLOW_DURATION_MAX = 40
+LEVEL_GLOW_GRADIENT_DURATION = 15
+
 BLINDNESS_TIME_MAX = 750
 BLINDNESS_TIME_PHASE = BLINDNESS_TIME_MAX / 10
 
