@@ -3,11 +3,14 @@ from constants import (
     SAFE_RADIUS,
     COLLISION_RADIUS,
     MESSAGE_DURATION_MAX,
+    LEVEL_GLOW_DURATION_MAX,
+    LEVEL_GLOW_GRADIENT_DURATION,
     SHADOW_OFFSET,
     DIS_WIDTH,
     HEADER_HEIGHT,
     BLACK_COL,
-    YELLOW_COL
+    YELLOW_COL,
+    LEVEL_ALERT_COL
 )
 from interactables import Food, Spikeball
 
@@ -18,6 +21,7 @@ class Player():
         self.food_eaten = 0
         self.curr_message = ""
         self.message_duration = 0
+        self.level_up_glow_duration = 0
         self.spikeballs = []
         self.foods = []
         self.snake = snake
@@ -36,16 +40,30 @@ class Player():
 
     def eat_food(self, quantity = 1):
         self.food_eaten += quantity
-        while self.food_eaten >= 10:
-            self.food_eaten -= 10
+        while self.food_eaten >= 10: 
+            self.food_eaten -= 10 
             self.level_up()
     
     def level_up(self):
         self.level += 1
+        self.set_level_up_glow()
         for i in range((self.level // 5) +1):
             self.create_spikeball()
         speed_increment = (self.level // 10) + 1
         self.snake.speed_up(speed_increment)
+    
+    def set_level_up_glow(self):
+        self.level_up_glow_duration = LEVEL_GLOW_DURATION_MAX
+        
+    def update_durations(self):
+        if self.message_duration > 0:
+            self.message_duration -= 1
+        if self.level_up_glow_duration > 0:
+            self.level_up_glow_duration -= 1
+            
+    def print_message(self):
+        if self.message_duration > 0:
+            self.print_food_text()
     
     def create_spikeball(self):
         valid_space = False
@@ -113,9 +131,24 @@ class Player():
         self.dis.blit(value, [0, 0])
 
     def print_level(self):
+        if (self.level_up_glow_duration <= 0):
+            level_colour = YELLOW_COL
+            
+        elif (self.level_up_glow_duration >= LEVEL_GLOW_GRADIENT_DURATION):
+            level_colour = LEVEL_ALERT_COL
+        else:
+            colour_list = list(YELLOW_COL)
+            alert_col_list = list(LEVEL_ALERT_COL)
+            colour_gradient_0 = (alert_col_list[0] - colour_list[0]) / LEVEL_GLOW_GRADIENT_DURATION
+            colour_gradient_1 = (alert_col_list[1] - colour_list[1]) / LEVEL_GLOW_GRADIENT_DURATION
+            colour_gradient_2 = (alert_col_list[2] - colour_list[2]) / LEVEL_GLOW_GRADIENT_DURATION
+            colour_list[0] += colour_gradient_0 * self.level_up_glow_duration
+            colour_list[1] += colour_gradient_1 * self.level_up_glow_duration
+            colour_list[2] += colour_gradient_2 * self.level_up_glow_duration
+            level_colour = tuple(colour_list)
         value = self.fonts["header_font"].render("Level: " + str(self.level), True, BLACK_COL)
         self.dis.blit(value, [DIS_WIDTH*7/8 + SHADOW_OFFSET, 0 + SHADOW_OFFSET])
-        value = self.fonts["header_font"].render("Level: " + str(self.level), True, YELLOW_COL)
+        value = self.fonts["header_font"].render("Level: " + str(self.level), True, level_colour)
         self.dis.blit(value, [DIS_WIDTH*7/8, 0])
 
     def print_shields(self):
