@@ -91,9 +91,8 @@ def gameLoop():
             for ball in player.spikeballs:
                 ball.display()
             snake.display()
-            if player.message_duration > 0:
-                player.print_food_text()
-                player.message_duration -= 1
+            player.update_durations()
+            player.print_message()
             pg.display.update()
             for spikeball in player.spikeballs:
                 if spikeball.collide(snake, COLLISION_RADIUS):
