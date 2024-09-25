@@ -318,4 +318,4 @@ def write_scores(player, dis, fonts, clock):
     for record in score_dict:
         f.write(f"{record}    {score_dict[record]}\n")
     f.close()
-    score_screen()
+    score_screen(dis, fonts)
