@@ -56,3 +56,9 @@ To install the requirements to run this program, do the following:
   - py -m pip install -r requirements.txt
 - Once you are done, you can leave the virtual environment by the command:
   - deactivate
+
+## Contributing
+
+Any interest in adding or improving features of the game are welcome!
+
+If you'd like to contribute, please fork the repository and open a pull request to the `main` branch.
